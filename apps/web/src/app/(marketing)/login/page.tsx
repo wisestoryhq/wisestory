@@ -59,7 +59,8 @@ export default function LoginPage() {
               </div>
             )}
             <Button
-              className="w-full gap-2"
+              variant="outline"
+              className="w-full gap-2 border-border bg-white text-foreground hover:bg-muted"
               size="lg"
               onClick={handleGoogleSignIn}
               disabled={loading}
