@@ -11,7 +11,7 @@ export async function generateEmbeddings(
 ): Promise<number[][]> {
   if (chunks.length === 0) return [];
 
-  const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
   // Process in batches of 100 (API limit)
   const batchSize = 100;
