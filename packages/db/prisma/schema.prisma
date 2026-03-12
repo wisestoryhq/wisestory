@@ -202,6 +202,7 @@ model SourceConnection {
   refreshToken   String?
   tokenExpiresAt DateTime?
   folderIds      String[]
+  folderNames    String[]
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
 
