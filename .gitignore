@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+.next/
+out/
+
+# turbo
+.turbo/
+
+# env
+.env
+.env.*
+!.env.example
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# debug
+npm-debug.log*
+pnpm-debug.log*
+
+# prisma
+packages/db/generated/
+
+# misc
+*.tsbuildinfo
+coverage/

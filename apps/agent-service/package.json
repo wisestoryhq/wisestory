@@ -1,0 +1,23 @@
+{
+  "name": "@wisestory/agent-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@wisestory/contracts": "workspace:*",
+    "@wisestory/db": "workspace:*",
+    "@wisestory/prompts": "workspace:*",
+    "@wisestory/types": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "typescript": "^5.7.0"
+  }
+}

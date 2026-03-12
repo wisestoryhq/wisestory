@@ -1,0 +1,15 @@
+{
+  "name": "wisestory",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  },
+  "packageManager": "pnpm@10.20.0"
+}
