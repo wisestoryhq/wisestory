@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -16,6 +17,10 @@ import {
   Plus,
   ExternalLink,
   X,
+  Loader2,
+  Play,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 
 type SelectedFolder = {
@@ -103,6 +108,13 @@ export function SourcesView({
   );
   const [pickerReady, setPickerReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [indexing, setIndexing] = useState(connection?.status === "syncing");
+  const [indexStatus, setIndexStatus] = useState<{
+    totalFiles: number;
+    files: Record<string, number>;
+    chunks: number;
+  } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasChanges =
     connection &&
@@ -151,6 +163,43 @@ export function SourcesView({
 
   function removeFolder(id: string) {
     setSelectedFolders((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  const pollStatus = useCallback(async () => {
+    const res = await fetch(`/api/drive/status?workspace=${workspaceSlug}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    setIndexStatus({
+      totalFiles: data.totalFiles,
+      files: data.files,
+      chunks: data.chunks,
+    });
+    if (data.status !== "syncing") {
+      setIndexing(false);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    }
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (indexing) {
+      pollStatus();
+      pollRef.current = setInterval(pollStatus, 2000);
+      return () => {
+        if (pollRef.current) clearInterval(pollRef.current);
+      };
+    }
+  }, [indexing, pollStatus]);
+
+  async function startIndexing() {
+    setIndexing(true);
+    await fetch("/api/drive/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceSlug }),
+    });
   }
 
   async function saveFolders() {
@@ -299,6 +348,63 @@ export function SourcesView({
                 </div>
               )}
             </div>
+
+            {/* Indexing section */}
+            {selectedFolders.length > 0 && !hasChanges && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Knowledge indexing</CardTitle>
+                    {!indexing && (
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={startIndexing}
+                      >
+                        <Play className="h-3.5 w-3.5" />
+                        {connection.fileCount > 0
+                          ? "Re-index files"
+                          : "Start indexing"}
+                      </Button>
+                    )}
+                  </div>
+                  <CardDescription>
+                    {indexing
+                      ? "Indexing files from Google Drive..."
+                      : connection.fileCount > 0
+                        ? "Knowledge base is ready for content generation."
+                        : "Index your Drive files to build the workspace knowledge base."}
+                  </CardDescription>
+                </CardHeader>
+                {(indexing || indexStatus) && (
+                  <CardContent>
+                    <div className="space-y-3">
+                      {indexing && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Processing files...
+                        </div>
+                      )}
+                      {indexStatus && (
+                        <div className="flex gap-6 text-sm">
+                          <div className="flex items-center gap-1.5">
+                            <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>
+                              {indexStatus.files.indexed ?? 0}/
+                              {indexStatus.totalFiles} files
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{indexStatus.chunks} chunks</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
           </div>
         )}
       </div>
