@@ -134,16 +134,6 @@ app.post("/generate", async (c) => {
     }
   }
 
-  // Save output to DB if campaignId provided
-  if (campaignId) {
-    await prisma.campaignOutput.create({
-      data: {
-        campaignId,
-        parts: JSON.parse(JSON.stringify(parts)),
-      },
-    });
-  }
-
   return c.json({
     parts,
     eventCount: events.length,

@@ -83,12 +83,8 @@ export async function createAndGenerate(input: CreateCampaignInput) {
 
     const result = await response.json();
 
-    // Store output if not already stored by agent service
-    const existingOutput = await prisma.campaignOutput.findFirst({
-      where: { campaignId: campaign.id },
-    });
-
-    if (!existingOutput && result.parts?.length > 0) {
+    // Store the output
+    if (result.parts?.length > 0) {
       await prisma.campaignOutput.create({
         data: {
           campaignId: campaign.id,
