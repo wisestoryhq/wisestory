@@ -1,3 +1,3 @@
-export { PrismaClient } from "./generated/prisma/client.js";
-export * from "./generated/prisma/client.js";
-export { createDbClient, getDb } from "./client.js";
+export { PrismaClient } from "./generated/prisma/client";
+export * from "./generated/prisma/client";
+export { createDbClient, getDb } from "./client";
