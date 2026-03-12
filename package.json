@@ -6,10 +6,12 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "clean": "turbo run clean",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
   },
   "devDependencies": {
-    "turbo": "^2"
+    "turbo": "^2",
+    "vitest": "^4.0.18"
   },
   "packageManager": "pnpm@10.20.0"
 }
