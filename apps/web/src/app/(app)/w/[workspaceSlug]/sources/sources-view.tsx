@@ -124,12 +124,12 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
               Link your Google Drive to import brand assets, guidelines, and
               content that the AI will use to generate grounded stories.
             </p>
-            <Button asChild size="sm" className="mt-6 gap-1.5">
-              <a href={`/api/drive/connect?workspace=${workspaceSlug}`}>
+            <a href={`/api/drive/connect?workspace=${workspaceSlug}`}>
+              <Button size="sm" className="mt-6 gap-1.5">
                 <ExternalLink className="h-3.5 w-3.5" />
                 Connect Google Drive
-              </a>
-            </Button>
+              </Button>
+            </a>
           </div>
         )}
 
