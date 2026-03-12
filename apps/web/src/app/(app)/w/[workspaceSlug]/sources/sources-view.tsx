@@ -109,6 +109,8 @@ export function SourcesView({
   const [pickerReady, setPickerReady] = useState(false);
   const [saving, setSaving] = useState(false);
   const [indexing, setIndexing] = useState(connection?.status === "syncing");
+  const [connectionStatus, setConnectionStatus] = useState(connection?.status ?? "disconnected");
+  const [fileCount, setFileCount] = useState(connection?.fileCount ?? 0);
   const [indexStatus, setIndexStatus] = useState<{
     totalFiles: number;
     files: Record<string, number>;
@@ -174,6 +176,8 @@ export function SourcesView({
       files: data.files,
       chunks: data.chunks,
     });
+    setConnectionStatus(data.status);
+    setFileCount(data.totalFiles);
     if (data.status !== "syncing") {
       setIndexing(false);
       if (pollRef.current) {
@@ -195,6 +199,7 @@ export function SourcesView({
 
   async function startIndexing() {
     setIndexing(true);
+    setConnectionStatus("syncing");
     await fetch("/api/drive/ingest", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -271,18 +276,19 @@ export function SourcesView({
                   </div>
                   <Badge
                     variant="secondary"
-                    className={`text-[10px] ${statusLabels[connection.status]?.color ?? ""}`}
+                    className={`text-[10px] ${statusLabels[connectionStatus]?.color ?? ""}`}
                   >
-                    {statusLabels[connection.status]?.label ??
-                      connection.status}
+                    {statusLabels[connectionStatus]?.label ??
+                      connectionStatus}
                   </Badge>
                 </div>
                 <CardDescription>
                   {selectedFolders.length} folder
                   {selectedFolders.length !== 1 ? "s" : ""} selected
                   {" · "}
-                  {connection.fileCount} file
-                  {connection.fileCount !== 1 ? "s" : ""} indexed
+                  {fileCount} file
+                  {fileCount !== 1 ? "s" : ""} indexed
+                  {indexStatus ? ` · ${indexStatus.chunks} chunks` : ""}
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -362,7 +368,7 @@ export function SourcesView({
                         onClick={startIndexing}
                       >
                         <Play className="h-3.5 w-3.5" />
-                        {connection.fileCount > 0
+                        {fileCount > 0
                           ? "Re-index files"
                           : "Start indexing"}
                       </Button>
@@ -371,7 +377,7 @@ export function SourcesView({
                   <CardDescription>
                     {indexing
                       ? "Indexing files from Google Drive..."
-                      : connection.fileCount > 0
+                      : fileCount > 0
                         ? "Knowledge base is ready for content generation."
                         : "Index your Drive files to build the workspace knowledge base."}
                   </CardDescription>
