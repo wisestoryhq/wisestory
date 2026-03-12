@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────
+
+enum WorkspaceMemberRole {
+  owner
+  admin
+  member
+}
+
+enum MediaType {
+  instagram_post
+  instagram_carousel
+  instagram_reel
+  tiktok_video
+  youtube_shorts
+  youtube_video
+  multi_platform_campaign
+}
+
+enum WorkspaceCategory {
+  news
+  fashion
+  cooking
+  gaming
+  tech
+  health
+  education
+  travel
+  entertainment
+  other
+}
+
+enum SourceConnectionStatus {
+  connected
+  syncing
+  error
+  disconnected
+}
+
+enum SourceFileStatus {
+  pending
+  processing
+  indexed
+  error
+}
+
+enum CampaignStatus {
+  draft
+  generating
+  completed
+  failed
+}
+
+// ─── User ───────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workspaceMembers WorkspaceMember[]
+
+  @@map("users")
+}
+
+// ─── Workspace (tenant boundary) ────────────────────────────────────
+
+model Workspace {
+  id          String            @id @default(cuid())
+  name        String
+  slug        String            @unique
+  description String?
+  logo        String?
+  category    WorkspaceCategory @default(other)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  members           WorkspaceMember[]
+  projects          Project[]
+  sourceConnections SourceConnection[]
+  sourceFiles       SourceFile[]
+  knowledgeChunks   KnowledgeChunk[]
+  campaigns         Campaign[]
+
+  @@map("workspaces")
+}
+
+// ─── Workspace Member ───────────────────────────────────────────────
+
+model WorkspaceMember {
+  id          String              @id @default(cuid())
+  role        WorkspaceMemberRole @default(member)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId])
+  @@map("workspace_members")
+}
+
+// ─── Project ────────────────────────────────────────────────────────
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  brief       String?
+  audience    String?
+  platforms   MediaType[]
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  campaigns Campaign[]
+
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+// ─── Source Connection (Google Drive) ───────────────────────────────
+
+model SourceConnection {
+  id             String                 @id @default(cuid())
+  provider       String                 @default("google_drive")
+  status         SourceConnectionStatus @default(connected)
+  accessToken    String?
+  refreshToken   String?
+  tokenExpiresAt DateTime?
+  folderIds      String[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  sourceFiles SourceFile[]
+
+  @@index([workspaceId])
+  @@map("source_connections")
+}
+
+// ─── Source File ────────────────────────────────────────────────────
+
+model SourceFile {
+  id           String           @id @default(cuid())
+  externalId   String
+  name         String
+  mimeType     String
+  driveUrl     String?
+  size         Int?
+  status       SourceFileStatus @default(pending)
+  extractedText String?
+  errorMessage String?
+  indexedAt     DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  workspaceId        String
+  workspace          Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceConnectionId String
+  sourceConnection   SourceConnection @relation(fields: [sourceConnectionId], references: [id], onDelete: Cascade)
+
+  knowledgeChunks KnowledgeChunk[]
+
+  @@unique([workspaceId, externalId])
+  @@index([workspaceId])
+  @@index([sourceConnectionId])
+  @@map("source_files")
+}
+
+// ─── Knowledge Chunk ────────────────────────────────────────────────
+
+model KnowledgeChunk {
+  id        String   @id @default(cuid())
+  content   String
+  embedding Float[]
+  metadata  Json?
+  chunkIndex Int
+  createdAt DateTime @default(now())
+
+  workspaceId  String
+  workspace    Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceFileId String
+  sourceFile   SourceFile @relation(fields: [sourceFileId], references: [id], onDelete: Cascade)
+
+  generationSourceRefs GenerationSourceRef[]
+
+  @@index([workspaceId])
+  @@index([sourceFileId])
+  @@map("knowledge_chunks")
+}
+
+// ─── Campaign ───────────────────────────────────────────────────────
+
+model Campaign {
+  id           String         @id @default(cuid())
+  mediaType    MediaType
+  prompt       String
+  instructions String?
+  status       CampaignStatus @default(draft)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  outputs              CampaignOutput[]
+  generationSourceRefs GenerationSourceRef[]
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@map("campaigns")
+}
+
+// ─── Campaign Output ────────────────────────────────────────────────
+
+model CampaignOutput {
+  id        String   @id @default(cuid())
+  version   Int      @default(1)
+  parts     Json
+  createdAt DateTime @default(now())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_outputs")
+}
+
+// ─── Generation Source Reference ────────────────────────────────────
+
+model GenerationSourceRef {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  campaignId      String
+  campaign        Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  knowledgeChunkId String
+  knowledgeChunk   KnowledgeChunk @relation(fields: [knowledgeChunkId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, knowledgeChunkId])
+  @@index([campaignId])
+  @@map("generation_source_refs")
+}

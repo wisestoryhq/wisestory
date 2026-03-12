@@ -1,2 +1,3 @@
-// @wisestory/db — Prisma client, schema, and repository helpers
-export {};
+export { PrismaClient } from "./generated/prisma/client.js";
+export * from "./generated/prisma/client.js";
+export { createDbClient, getDb } from "./client.js";

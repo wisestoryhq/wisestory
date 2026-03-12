@@ -9,11 +9,22 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist src/generated"
   },
   "devDependencies": {
+    "@types/node": "^20.19.37",
+    "dotenv": "^17.3.1",
+    "prisma": "^7.5.0",
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
+    "@prisma/client": "^7.5.0"
   }
 }
