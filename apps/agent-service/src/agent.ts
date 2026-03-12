@@ -38,63 +38,50 @@ export function createCreativeDirectorAgent({
   // Agent 1: Plans content using brand knowledge
   const plannerAgent = new LlmAgent({
     name: "planner",
-    model: "gemini-2.5-flash",
+    model: "gemini-2.5-pro",
     description:
       "Retrieves brand knowledge and creates a detailed creative brief with specific image generation instructions.",
-    instruction: `${instruction}
+    instruction: `## RULE #1 — YOU MUST FOLLOW THIS
 
-## IMPORTANT: Your Role
+You are an AUTOMATED agent in a pipeline. There is NO human to talk to.
+- NEVER ask questions. NEVER request more information. NEVER say "tell me more" or "please provide."
+- Your FIRST action must ALWAYS be to call retrieve_knowledge at least 3 times with different queries.
+- Use the retrieved knowledge + user prompt to create the content. Fill in all gaps yourself.
 
-You are the PLANNER in an automated pipeline. There is NO human to ask questions to.
-NEVER ask clarifying questions. NEVER request more information. NEVER say "I need more context."
+## RULE #2 — YOU MUST INCLUDE [IMAGE: ...] TAGS
 
-Instead, ALWAYS do the following:
-1. IMMEDIATELY call retrieve_knowledge multiple times with different queries to gather brand context (voice, visual style, colors, audience, product details, etc.)
-2. Use whatever the user provided plus the retrieved brand knowledge to fill in any gaps
-3. Create a detailed creative brief that includes ALL text content AND specific image generation prompts
-4. For each image needed, write a detailed prompt in [IMAGE: ...] format
+Your output MUST contain [IMAGE: ...] tags. Output without images = FAILURE.
+- Instagram Post: exactly 1 [IMAGE: ...] tag
+- Carousel: 1 [IMAGE: ...] tag per slide (3-5 slides)
+- Reel/TikTok/Shorts: 1 [IMAGE: ...] tag per key scene
+- YouTube Video: [IMAGE: ...] tags for thumbnail + key moments
+- Multi-Platform: [IMAGE: ...] tags for each platform's visual
 
-You have access to the full brand knowledge base. USE IT. Even if the user prompt is vague, retrieve knowledge and make creative decisions based on what you find.
+## Your Job
 
-## MANDATORY: You MUST include [IMAGE: ...] tags
+1. Call retrieve_knowledge with queries like "brand voice", "visual style", "product overview", "target audience", "brand colors"
+2. Use the retrieved brand knowledge to create a detailed creative brief
+3. Include text content AND [IMAGE: ...] tags interleaved
 
-Your output MUST contain at least one [IMAGE: ...] tag. This is non-negotiable.
-- For an Instagram Post: include exactly 1 [IMAGE: ...] tag for the hero image
-- For a Carousel: include one [IMAGE: ...] tag per slide (e.g., 5 slides = 5 tags)
-- For a Reel/TikTok/Shorts: include one [IMAGE: ...] tag per key scene
-- For a YouTube Video: include [IMAGE: ...] tags for thumbnail + key visual moments
-- For Multi-Platform: include [IMAGE: ...] tags for each platform's visual
+${instruction}
 
-If your output has ZERO [IMAGE: ...] tags, you have FAILED your task. Always include them.
+## Image Prompt Rules
 
-## CRITICAL IMAGE RULES
+- Each [IMAGE: ...] = ONE separate standalone image (never a grid/collage)
+- Be specific: visual style, colors, composition, mood, text overlays, subject
+- Use brand colors and style from retrieved knowledge
 
-- Each [IMAGE: ...] tag becomes ONE SEPARATE image. NEVER combine multiple visuals into a single image.
-- For a carousel, each slide gets its OWN [IMAGE: ...] tag — do NOT create a grid or collage.
-- For a reel/video storyboard, each scene gets its OWN [IMAGE: ...] tag.
-- Place each [IMAGE: ...] tag on its own line, between the text sections it belongs to.
-- Be extremely specific in each image prompt about:
-  - Visual style, colors, composition, aspect ratio
-  - Brand elements to include (colors, fonts, aesthetic from brand guidelines)
-  - Mood, lighting, and aesthetic
-  - Any text that should appear ON the image
-  - What the image shows (subject, scene, layout)
+## Output Format
 
-## Output Structure
+Text section (caption, headline...)
 
-Write the creative package as a flowing document with text sections and [IMAGE: ...] tags interleaved:
+[IMAGE: detailed standalone image description including style, colors, mood, subject]
 
----
-Text section (caption, headline, description...)
+Text section (next part...)
 
 [IMAGE: detailed standalone image description]
 
-Text section (next part of content...)
-
-[IMAGE: detailed standalone image description]
----
-
-Do NOT generate images yourself. Do NOT combine multiple concepts into one image prompt.`,
+Do NOT generate images yourself — only write [IMAGE: ...] prompts.`,
     tools: [retrieveKnowledge],
     outputKey: "creative_brief",
   });
@@ -102,7 +89,7 @@ Do NOT generate images yourself. Do NOT combine multiple concepts into one image
   // Agent 2: Generates final interleaved text + images
   const creatorAgent = new LlmAgent({
     name: "creator",
-    model: "gemini-3.1-flash-image-preview",
+    model: "gemini-3-pro-image-preview",
     description:
       "Generates the final interleaved text and image content package.",
     instruction: `You are a visual content creator. You receive a creative brief and produce the final content with real generated images.
