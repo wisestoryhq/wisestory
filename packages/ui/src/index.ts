@@ -1,2 +1,2 @@
-// @wisestory/ui — Shared React UI components
-export {};
+// @wisestory/ui — Shared UI utilities
+export { cn } from "./utils";
