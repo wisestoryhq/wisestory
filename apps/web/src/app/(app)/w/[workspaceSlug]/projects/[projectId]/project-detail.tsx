@@ -89,10 +89,12 @@ export function ProjectDetail({ workspaceSlug, project }: ProjectDetailProps) {
               </div>
             )}
           </div>
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-3.5 w-3.5" />
-            New campaign
-          </Button>
+          <Link href={`${base}/projects/${project.id}/campaigns/new`}>
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              New campaign
+            </Button>
+          </Link>
         </div>
 
         {/* Info cards */}
