@@ -56,6 +56,17 @@ Instead, ALWAYS do the following:
 
 You have access to the full brand knowledge base. USE IT. Even if the user prompt is vague, retrieve knowledge and make creative decisions based on what you find.
 
+## MANDATORY: You MUST include [IMAGE: ...] tags
+
+Your output MUST contain at least one [IMAGE: ...] tag. This is non-negotiable.
+- For an Instagram Post: include exactly 1 [IMAGE: ...] tag for the hero image
+- For a Carousel: include one [IMAGE: ...] tag per slide (e.g., 5 slides = 5 tags)
+- For a Reel/TikTok/Shorts: include one [IMAGE: ...] tag per key scene
+- For a YouTube Video: include [IMAGE: ...] tags for thumbnail + key visual moments
+- For Multi-Platform: include [IMAGE: ...] tags for each platform's visual
+
+If your output has ZERO [IMAGE: ...] tags, you have FAILED your task. Always include them.
+
 ## CRITICAL IMAGE RULES
 
 - Each [IMAGE: ...] tag becomes ONE SEPARATE image. NEVER combine multiple visuals into a single image.
@@ -101,17 +112,19 @@ Do NOT generate images yourself. Do NOT combine multiple concepts into one image
 
 ## Your Task
 
-Read the brief above. For each section with an [IMAGE: ...] tag:
-1. Output the polished text for that section
-2. Generate ONE image for that [IMAGE: ...] description — treat it as a completely independent image request
-3. Continue to the next section
+You MUST generate real images. This is a multimodal content creation task.
+
+1. Read the brief above
+2. For each [IMAGE: ...] tag, generate ONE standalone image matching that description
+3. If the brief has no [IMAGE: ...] tags, generate at least one image that fits the content
+4. Output polished text AND generated images interleaved together
 
 ## IMPORTANT RULES
+- You MUST generate at least one image — text-only output is a failure
 - Generate a SEPARATE image for EACH [IMAGE: ...] tag in the brief
 - Each image should be a single full-frame visual — like one phone screen or one poster
 - Do not combine multiple images into a grid or collage
-- Treat each [IMAGE: ...] independently — generate it as its own standalone image
-- Output pattern: text, image, text, image, text, image — alternating throughout`,
+- Output pattern: text, image, text, image — alternating throughout`,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
     },
