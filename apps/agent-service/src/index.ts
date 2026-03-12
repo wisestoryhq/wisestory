@@ -97,20 +97,14 @@ app.post("/generate", async (c) => {
       console.log(`  content parts=${event.content.parts?.length ?? 0}`);
     }
 
-    // Extract content from final agent responses (not tool calls)
+    // Log all events for debugging
     if (event.content?.parts) {
       for (const part of event.content.parts) {
         if ("text" in part && part.text) {
           console.log(`  [text] ${part.text.substring(0, 100)}...`);
-          parts.push({ type: "text", content: part.text });
         }
         if ("inlineData" in part && part.inlineData) {
           console.log(`  [image] ${part.inlineData.mimeType} (${(part.inlineData.data?.length ?? 0)} bytes)`);
-          parts.push({
-            type: "image",
-            data: part.inlineData.data ?? "",
-            mimeType: part.inlineData.mimeType ?? "image/png",
-          });
         }
         if ("functionCall" in part) {
           const fc = part.functionCall as { name: string; args: unknown };
@@ -119,6 +113,22 @@ app.post("/generate", async (c) => {
         if ("functionResponse" in part) {
           const fr = part.functionResponse as { name: string };
           console.log(`  [functionResponse] ${fr.name}`);
+        }
+      }
+    }
+
+    // Only collect output from the creator agent (the one that generates images)
+    if (event.author === "creator" && event.content?.parts) {
+      for (const part of event.content.parts) {
+        if ("text" in part && part.text) {
+          parts.push({ type: "text", content: part.text });
+        }
+        if ("inlineData" in part && part.inlineData) {
+          parts.push({
+            type: "image",
+            data: part.inlineData.data ?? "",
+            mimeType: part.inlineData.mimeType ?? "image/png",
+          });
         }
       }
     }
