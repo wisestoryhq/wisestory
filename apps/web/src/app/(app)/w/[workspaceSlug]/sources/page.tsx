@@ -23,6 +23,7 @@ export default async function SourcesPage({
           id: true,
           status: true,
           folderIds: true,
+          folderNames: true,
           createdAt: true,
           _count: {
             select: { sourceFiles: true },
@@ -41,12 +42,14 @@ export default async function SourcesPage({
   return (
     <SourcesView
       workspaceSlug={workspace.slug}
+      googleClientId={process.env.GOOGLE_CLIENT_ID!}
       connection={
         connection
           ? {
               id: connection.id,
               status: connection.status,
               folderIds: connection.folderIds,
+              folderNames: connection.folderNames,
               fileCount: connection._count.sourceFiles,
               connectedAt: connection.createdAt.toISOString(),
             }

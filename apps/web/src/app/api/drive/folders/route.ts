@@ -84,9 +84,10 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { workspaceSlug, folderIds } = body as {
+  const { workspaceSlug, folderIds, folderNames } = body as {
     workspaceSlug: string;
     folderIds: string[];
+    folderNames?: string[];
   };
 
   if (!workspaceSlug || !Array.isArray(folderIds)) {
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
 
   await prisma.sourceConnection.update({
     where: { id: connection.id },
-    data: { folderIds },
+    data: { folderIds, folderNames: folderNames ?? [] },
   });
 
   return NextResponse.json({ ok: true });

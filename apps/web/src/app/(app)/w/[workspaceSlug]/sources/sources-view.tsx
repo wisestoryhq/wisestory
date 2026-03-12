@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import Script from "next/script";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -13,13 +13,12 @@ import {
 import {
   HardDrive,
   FolderOpen,
-  Check,
-  Loader2,
+  Plus,
   ExternalLink,
-  FileText,
+  X,
 } from "lucide-react";
 
-type Folder = {
+type SelectedFolder = {
   id: string;
   name: string;
 };
@@ -28,6 +27,7 @@ type Connection = {
   id: string;
   status: string;
   folderIds: string[];
+  folderNames: string[];
   fileCount: number;
   connectedAt: string;
 };
@@ -35,6 +35,7 @@ type Connection = {
 type SourcesViewProps = {
   workspaceSlug: string;
   connection: Connection | null;
+  googleClientId: string;
 };
 
 const statusLabels: Record<string, { label: string; color: string }> = {
@@ -47,44 +48,115 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   },
 };
 
-export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    connection?.folderIds ?? [],
+declare global {
+  interface Window {
+    gapi: {
+      load(api: string, callback: () => void): void;
+    };
+    google: {
+      picker: {
+        PickerBuilder: new () => GooglePickerBuilder;
+        ViewId: { FOLDERS: string };
+        Feature: { MULTISELECT_ENABLED: string };
+        Action: { PICKED: string; CANCEL: string };
+        DocsViewMode: { LIST: string };
+      };
+    };
+  }
+}
+
+interface GooglePickerBuilder {
+  setOAuthToken(token: string): GooglePickerBuilder;
+  setDeveloperKey(key: string): GooglePickerBuilder;
+  setAppId(appId: string): GooglePickerBuilder;
+  setCallback(callback: (data: GooglePickerResult) => void): GooglePickerBuilder;
+  addView(view: GooglePickerView): GooglePickerBuilder;
+  enableFeature(feature: string): GooglePickerBuilder;
+  setTitle(title: string): GooglePickerBuilder;
+  build(): { setVisible(visible: boolean): void };
+}
+
+interface GooglePickerView {
+  setMimeTypes(mimeTypes: string): GooglePickerView;
+  setMode(mode: string): GooglePickerView;
+  setSelectFolderEnabled(enabled: boolean): GooglePickerView;
+}
+
+interface GooglePickerResult {
+  action: string;
+  docs?: Array<{ id: string; name: string; mimeType: string }>;
+}
+
+export function SourcesView({
+  workspaceSlug,
+  connection,
+  googleClientId,
+}: SourcesViewProps) {
+  const [selectedFolders, setSelectedFolders] = useState<SelectedFolder[]>(
+    () => {
+      if (!connection) return [];
+      return connection.folderIds.map((id, i) => ({
+        id,
+        name: connection.folderNames[i] ?? id,
+      }));
+    },
   );
-  const [loadingFolders, setLoadingFolders] = useState(false);
+  const [pickerReady, setPickerReady] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const hasChanges =
     connection &&
-    JSON.stringify(selectedIds.sort()) !==
+    JSON.stringify(selectedFolders.map((f) => f.id).sort()) !==
       JSON.stringify([...(connection.folderIds ?? [])].sort());
 
-  const loadFolders = useCallback(async () => {
-    setLoadingFolders(true);
-    try {
-      const res = await fetch(
-        `/api/drive/folders?workspace=${workspaceSlug}`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setFolders(data.folders);
-      }
-    } finally {
-      setLoadingFolders(false);
-    }
-  }, [workspaceSlug]);
-
-  useEffect(() => {
-    if (connection?.status === "connected") {
-      loadFolders();
-    }
-  }, [connection?.status, loadFolders]);
-
-  function toggleFolder(id: string) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id],
+  const openPicker = useCallback(async () => {
+    // Get a fresh access token
+    const res = await fetch(
+      `/api/drive/token?workspace=${workspaceSlug}`,
     );
+    if (!res.ok) return;
+    const { accessToken } = await res.json();
+
+    const google = window.google;
+    if (!google?.picker) return;
+
+    const view = new (
+      google.picker.ViewId.FOLDERS as unknown as new () => GooglePickerView
+    )();
+
+    const docsView = Object.assign(
+      Object.create(Object.getPrototypeOf(view)),
+      view,
+    );
+    docsView.setMimeTypes?.("application/vnd.google-apps.folder");
+    docsView.setSelectFolderEnabled?.(true);
+
+    const picker = new google.picker.PickerBuilder()
+      .setOAuthToken(accessToken)
+      .setAppId(googleClientId.split("-")[0])
+      .setCallback((data: GooglePickerResult) => {
+        if (data.action === google.picker.Action.PICKED && data.docs) {
+          const newFolders = data.docs.map((doc) => ({
+            id: doc.id,
+            name: doc.name,
+          }));
+          setSelectedFolders((prev) => {
+            const existingIds = new Set(prev.map((f) => f.id));
+            const unique = newFolders.filter((f) => !existingIds.has(f.id));
+            return [...prev, ...unique];
+          });
+        }
+      })
+      .addView(docsView)
+      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+      .setTitle("Select folders to index")
+      .build();
+
+    picker.setVisible(true);
+  }, [workspaceSlug, googleClientId]);
+
+  function removeFolder(id: string) {
+    setSelectedFolders((prev) => prev.filter((f) => f.id !== id));
   }
 
   async function saveFolders() {
@@ -93,7 +165,11 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
       await fetch("/api/drive/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workspaceSlug, folderIds: selectedIds }),
+        body: JSON.stringify({
+          workspaceSlug,
+          folderIds: selectedFolders.map((f) => f.id),
+          folderNames: selectedFolders.map((f) => f.name),
+        }),
       });
       window.location.reload();
     } finally {
@@ -103,6 +179,14 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
 
   return (
     <div className="px-8 py-10">
+      {/* Load Google Picker API */}
+      <Script
+        src="https://apis.google.com/js/api.js"
+        onLoad={() => {
+          window.gapi.load("picker", () => setPickerReady(true));
+        }}
+      />
+
       <div className="mx-auto max-w-4xl">
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">Sources</h1>
@@ -117,9 +201,7 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
             <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
               <HardDrive className="h-5 w-5 text-primary" />
             </div>
-            <h2 className="text-base font-semibold">
-              Connect Google Drive
-            </h2>
+            <h2 className="text-base font-semibold">Connect Google Drive</h2>
             <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
               Link your Google Drive to import brand assets, guidelines, and
               content that the AI will use to generate grounded stories.
@@ -153,8 +235,8 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
                   </Badge>
                 </div>
                 <CardDescription>
-                  {connection.folderIds.length} folder
-                  {connection.folderIds.length !== 1 ? "s" : ""} selected
+                  {selectedFolders.length} folder
+                  {selectedFolders.length !== 1 ? "s" : ""} selected
                   {" · "}
                   {connection.fileCount} file
                   {connection.fileCount !== 1 ? "s" : ""} indexed
@@ -162,77 +244,64 @@ export function SourcesView({ workspaceSlug, connection }: SourcesViewProps) {
               </CardHeader>
             </Card>
 
-            {/* Folder browser */}
+            {/* Selected folders */}
             <div>
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">Select folders</h2>
-                {hasChanges && (
+                <h2 className="text-sm font-semibold">Selected folders</h2>
+                <div className="flex gap-2">
                   <Button
+                    variant="outline"
                     size="sm"
                     className="gap-1.5"
-                    onClick={saveFolders}
-                    disabled={saving}
+                    onClick={openPicker}
+                    disabled={!pickerReady}
                   >
-                    {saving ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5" />
-                    )}
-                    Save selection
+                    <Plus className="h-3.5 w-3.5" />
+                    Add folders
                   </Button>
-                )}
+                  {hasChanges && (
+                    <Button
+                      size="sm"
+                      onClick={saveFolders}
+                      disabled={saving}
+                    >
+                      {saving ? "Saving..." : "Save changes"}
+                    </Button>
+                  )}
+                </div>
               </div>
 
-              {loadingFolders && (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              )}
-
-              {!loadingFolders && folders.length === 0 && (
+              {selectedFolders.length === 0 && (
                 <div className="rounded-lg border border-dashed p-6 text-center">
                   <FolderOpen className="mx-auto h-5 w-5 text-muted-foreground" />
                   <p className="mt-2 text-sm text-muted-foreground">
-                    No folders found in your Drive root.
+                    No folders selected. Click "Add folders" to pick folders
+                    from your Google Drive.
                   </p>
                 </div>
               )}
 
-              {!loadingFolders && folders.length > 0 && (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {folders.map((folder) => {
-                    const selected = selectedIds.includes(folder.id);
-                    return (
-                      <button
-                        key={folder.id}
-                        type="button"
-                        onClick={() => toggleFolder(folder.id)}
-                        className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors ${
-                          selected
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-foreground/20"
-                        }`}
-                      >
-                        <FolderOpen
-                          className={`h-4 w-4 shrink-0 ${
-                            selected
-                              ? "text-primary"
-                              : "text-muted-foreground"
-                          }`}
-                        />
-                        <span
-                          className={`truncate text-sm ${
-                            selected ? "font-medium text-primary" : ""
-                          }`}
-                        >
+              {selectedFolders.length > 0 && (
+                <div className="space-y-2">
+                  {selectedFolders.map((folder) => (
+                    <div
+                      key={folder.id}
+                      className="flex items-center justify-between rounded-lg border px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <FolderOpen className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">
                           {folder.name}
                         </span>
-                        {selected && (
-                          <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
-                        )}
+                      </div>
+                      <button
+                        onClick={() => removeFolder(folder.id)}
+                        className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <X className="h-3.5 w-3.5" />
                       </button>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
