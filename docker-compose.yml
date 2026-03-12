@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: wisestory-db
     restart: unless-stopped
     environment:
@@ -11,6 +11,7 @@ services:
       - "5434:5432"
     volumes:
       - wisestory-pgdata:/var/lib/postgresql/data
+      - ./docker/init:/docker-entrypoint-initdb.d
 
 volumes:
   wisestory-pgdata:
