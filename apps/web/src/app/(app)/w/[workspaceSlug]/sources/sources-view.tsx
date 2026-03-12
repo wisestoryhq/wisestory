@@ -117,38 +117,32 @@ export function SourcesView({
     if (!res.ok) return;
     const { accessToken } = await res.json();
 
-    const google = window.google;
-    if (!google?.picker) return;
+    const gPicker = window.google.picker;
+    if (!gPicker) return;
 
-    const view = new (
-      google.picker.ViewId.FOLDERS as unknown as new () => GooglePickerView
-    )();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const gp = gPicker as any;
+    const view = new gp.DocsView(gp.ViewId.FOLDERS);
+    view.setSelectFolderEnabled(true);
 
-    const docsView = Object.assign(
-      Object.create(Object.getPrototypeOf(view)),
-      view,
-    );
-    docsView.setMimeTypes?.("application/vnd.google-apps.folder");
-    docsView.setSelectFolderEnabled?.(true);
-
-    const picker = new google.picker.PickerBuilder()
+    const picker = new gp.PickerBuilder()
       .setOAuthToken(accessToken)
       .setAppId(googleClientId.split("-")[0])
       .setCallback((data: GooglePickerResult) => {
-        if (data.action === google.picker.Action.PICKED && data.docs) {
-          const newFolders = data.docs.map((doc) => ({
+        if (data.action === gp.Action.PICKED && data.docs) {
+          const newFolders = data.docs.map((doc: { id: string; name: string }) => ({
             id: doc.id,
             name: doc.name,
           }));
           setSelectedFolders((prev) => {
             const existingIds = new Set(prev.map((f) => f.id));
-            const unique = newFolders.filter((f) => !existingIds.has(f.id));
+            const unique = newFolders.filter((f: { id: string }) => !existingIds.has(f.id));
             return [...prev, ...unique];
           });
         }
       })
-      .addView(docsView)
-      .enableFeature(google.picker.Feature.MULTISELECT_ENABLED)
+      .addView(view)
+      .enableFeature(gp.Feature.MULTISELECT_ENABLED)
       .setTitle("Select folders to index")
       .build();
 
