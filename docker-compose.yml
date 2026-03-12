@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: wisestory-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: wisestory
+      POSTGRES_PASSWORD: wisestory
+      POSTGRES_DB: wisestory
+    ports:
+      - "5434:5432"
+    volumes:
+      - wisestory-pgdata:/var/lib/postgresql/data
+
+volumes:
+  wisestory-pgdata:
