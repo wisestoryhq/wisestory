@@ -1,147 +1,147 @@
 "use client";
 
-import { signOut } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import {
   Card,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
-  Zap,
-  LogOut,
-  FolderPlus,
+  FolderKanban,
   HardDrive,
-  Settings,
+  Sparkles,
   Plus,
+  ArrowRight,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type WorkspaceDashboardProps = {
   workspace: {
     name: string;
     slug: string;
-    category: string;
     description: string | null;
     projectCount: number;
     sourceCount: number;
-  };
-  user: {
-    name: string;
-    image?: string;
-    role: string;
+    campaignCount: number;
   };
 };
 
-export function WorkspaceDashboard({
-  workspace,
-  user,
-}: WorkspaceDashboardProps) {
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-            <span className="text-sm font-semibold tracking-tight">
-              {workspace.name}
-            </span>
-            <Badge variant="outline" className="text-[10px] capitalize">
-              {workspace.category}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3">
-            <Avatar className="h-7 w-7">
-              <AvatarImage src={user.image} />
-              <AvatarFallback className="text-xs">
-                {user.name?.charAt(0)?.toUpperCase() ?? "?"}
-              </AvatarFallback>
-            </Avatar>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              onClick={() =>
-                signOut({
-                  fetchOptions: {
-                    onSuccess: () => {
-                      window.location.href = "/login";
-                    },
-                  },
-                })
-              }
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sign out
-            </Button>
-          </div>
-        </div>
-      </header>
+export function WorkspaceDashboard({ workspace }: WorkspaceDashboardProps) {
+  const base = `/w/${workspace.slug}`;
+  const isEmpty =
+    workspace.projectCount === 0 && workspace.sourceCount === 0;
 
-      <main className="mx-auto max-w-6xl px-6 py-12">
+  return (
+    <div className="px-8 py-10">
+      <div className="mx-auto max-w-4xl">
+        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back, {user.name?.split(" ")[0] ?? "there"}
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {workspace.description ??
-              "Manage your projects and generate content."}
+            {workspace.description ?? `Overview of ${workspace.name}.`}
           </p>
         </div>
 
-        {/* Quick stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {/* Stats */}
+        <div className="mb-8 grid grid-cols-3 gap-4">
           <div className="rounded-lg border p-4">
-            <p className="text-2xl font-semibold">{workspace.projectCount}</p>
-            <p className="text-xs text-muted-foreground">Projects</p>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <FolderKanban className="h-3.5 w-3.5" />
+              <span className="text-xs">Projects</span>
+            </div>
+            <p className="mt-1 text-2xl font-semibold">
+              {workspace.projectCount}
+            </p>
           </div>
           <div className="rounded-lg border p-4">
-            <p className="text-2xl font-semibold">{workspace.sourceCount}</p>
-            <p className="text-xs text-muted-foreground">Connected sources</p>
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <HardDrive className="h-3.5 w-3.5" />
+              <span className="text-xs">Sources</span>
+            </div>
+            <p className="mt-1 text-2xl font-semibold">
+              {workspace.sourceCount}
+            </p>
+          </div>
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="text-xs">Campaigns</span>
+            </div>
+            <p className="mt-1 text-2xl font-semibold">
+              {workspace.campaignCount}
+            </p>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="cursor-pointer border-dashed transition-colors hover:border-primary/50 hover:bg-muted/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-sm">New project</CardTitle>
-              </div>
-              <CardDescription>
-                Start a new content project for your brand.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="cursor-pointer border-dashed transition-colors hover:border-primary/50 hover:bg-muted/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-sm">Connect Google Drive</CardTitle>
-              </div>
-              <CardDescription>
-                Link your brand assets and knowledge base.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="cursor-pointer border-dashed transition-colors hover:border-primary/50 hover:bg-muted/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <CardTitle className="text-sm">Workspace settings</CardTitle>
-              </div>
-              <CardDescription>
-                Update brand details, members, and preferences.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </main>
+        {/* Empty state */}
+        {isEmpty && (
+          <div className="rounded-xl border border-dashed p-10 text-center">
+            <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <h2 className="text-base font-semibold">
+              Get started with {workspace.name}
+            </h2>
+            <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+              Connect your Google Drive to import brand assets, then create your
+              first project to start generating content.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <Link href={`${base}/sources`}>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <HardDrive className="h-3.5 w-3.5" />
+                  Connect sources
+                </Button>
+              </Link>
+              <Link href={`${base}/projects`}>
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="h-3.5 w-3.5" />
+                  New project
+                </Button>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Quick actions (when not empty) */}
+        {!isEmpty && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Link href={`${base}/projects`}>
+              <Card className="group cursor-pointer transition-colors hover:border-primary/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FolderKanban className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm">Projects</CardTitle>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                  <CardDescription>
+                    View and manage your content projects.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+            <Link href={`${base}/sources`}>
+              <Card className="group cursor-pointer transition-colors hover:border-primary/30">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HardDrive className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-sm">Sources</CardTitle>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                  <CardDescription>
+                    Manage connected brand assets and knowledge.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
