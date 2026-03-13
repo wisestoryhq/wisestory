@@ -60,3 +60,37 @@ export async function createCampaign(input: CreateCampaignInput) {
 
   return { campaignId: campaign.id };
 }
+
+/**
+ * Deletes a campaign and its outputs.
+ */
+export async function deleteCampaign(campaignId: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      id: campaignId,
+      workspace: {
+        members: { some: { userId: session.user.id } },
+      },
+    },
+  });
+
+  if (!campaign) {
+    throw new Error("Campaign not found");
+  }
+
+  await prisma.campaignOutput.deleteMany({
+    where: { campaignId },
+  });
+
+  await prisma.campaign.delete({
+    where: { id: campaignId },
+  });
+}

@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { deleteCampaign } from "@/app/actions/campaign";
 import {
   ArrowLeft,
   Image as ImageIcon,
@@ -16,6 +19,7 @@ import {
   AlertCircle,
   Brain,
   ChevronDown,
+  Trash2,
 } from "lucide-react";
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -262,6 +266,8 @@ export function CampaignOutput({
   parts: initialParts,
 }: Props) {
   const base = `/w/${workspaceSlug}`;
+  const router = useRouter();
+  const [isDeleting, startDelete] = useTransition();
   const Icon = MEDIA_TYPE_ICONS[campaign.mediaType] ?? Globe;
 
   // Streaming state
@@ -403,6 +409,23 @@ export function CampaignOutput({
                 </p>
               </div>
             </div>
+            {phase === "done" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                disabled={isDeleting}
+                onClick={() => {
+                  if (!confirm("Delete this campaign?")) return;
+                  startDelete(async () => {
+                    await deleteCampaign(campaign.id);
+                    router.push(`${base}/projects/${projectId}`);
+                  });
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </div>
         </div>
 
