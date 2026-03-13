@@ -6,12 +6,12 @@ import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 /**
  * Creates a two-agent pipeline for content generation:
  *
- * 1. Planner Agent (gemini-3-flash-preview + tools)
+ * 1. Planner Agent (gemini-2.5-pro + tools)
  *    - Retrieves brand knowledge via retrieve_knowledge tool
  *    - Plans the creative package with detailed image descriptions
  *    - Outputs a structured creative brief with text + image prompts
  *
- * 2. Creator Agent (gemini-3.1-flash-image-preview + TEXT+IMAGE)
+ * 2. Creator Agent (gemini-2.5-flash-image + TEXT+IMAGE)
  *    - Takes the planner's output and generates the final interleaved content
  *    - Produces actual images inline with text
  *    - No tools needed — pure multimodal generation
@@ -81,7 +81,7 @@ Your creativity lights up every project. Here's to another year of amazing work!
   // Agent 2: Generates final interleaved text + images
   const creatorAgent = new LlmAgent({
     name: "creator",
-    model: "gemini-3.1-flash-image-preview",
+    model: "gemini-2.5-flash-image",
     description:
       "Generates the final interleaved text and image content package.",
     instruction: `You are an automated image generation system. You do NOT chat. You do NOT reply conversationally. You ONLY output content with generated images.
