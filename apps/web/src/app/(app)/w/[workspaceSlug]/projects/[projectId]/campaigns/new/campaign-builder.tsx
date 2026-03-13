@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { createAndGenerate } from "@/app/actions/campaign";
+import { createCampaign } from "@/app/actions/campaign";
 import {
   ArrowLeft,
   Image,
@@ -18,7 +18,6 @@ import {
   Globe,
   Sparkles,
   ChevronDown,
-  Loader2,
   AlertCircle,
 } from "lucide-react";
 
@@ -37,7 +36,6 @@ type MediaTypeOption = {
   format: string;
   ratio: string;
   icon: React.ElementType;
-  /** Aspect ratio for the mini canvas preview */
   canvasClass: string;
 };
 
@@ -119,7 +117,7 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
 
     startTransition(async () => {
       try {
-        const result = await createAndGenerate({
+        const result = await createCampaign({
           workspaceSlug,
           projectId: project.id,
           mediaType: selectedType,
@@ -127,6 +125,7 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
           instructions: instructions.trim() || undefined,
         });
 
+        // Redirect immediately — generation streams on the campaign page
         router.push(
           `${base}/projects/${project.id}/campaigns/${result.campaignId}`
         );
@@ -160,26 +159,6 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
           </p>
         </div>
 
-        {/* Generating overlay */}
-        {isPending && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative">
-                <div className="h-12 w-12 rounded-full border-2 border-primary/20" />
-                <Loader2 className="absolute inset-0 h-12 w-12 animate-spin text-primary" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium">
-                  Generating your content...
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  This may take up to a minute
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Step 1: Media type */}
         <div className="mb-10">
           <div className="mb-4 flex items-baseline gap-3">
@@ -208,7 +187,6 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
                       : "border-border hover:border-foreground/20 hover:bg-muted/50"
                   } ${isPending ? "pointer-events-none opacity-50" : ""}`}
                 >
-                  {/* Mini canvas preview */}
                   <div
                     className={`mb-3 w-10 ${type.canvasClass} rounded-[4px] border transition-colors ${
                       isSelected

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +14,8 @@ import {
   Monitor,
   Globe,
   AlertCircle,
-  Loader2,
+  Brain,
+  ChevronDown,
 } from "lucide-react";
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -55,7 +57,6 @@ type Props = {
 };
 
 function TextBlock({ content }: { content: string }) {
-  // Simple markdown-ish rendering: headings, bold, paragraphs
   const lines = content.split("\n");
 
   return (
@@ -64,7 +65,6 @@ function TextBlock({ content }: { content: string }) {
         const trimmed = line.trim();
         if (!trimmed) return <br key={i} />;
 
-        // Headings
         if (trimmed.startsWith("### ")) {
           return (
             <h3
@@ -96,21 +96,21 @@ function TextBlock({ content }: { content: string }) {
           );
         }
 
-        // Horizontal rule
         if (trimmed === "---" || trimmed === "***") {
           return <Separator key={i} className="my-6" />;
         }
 
-        // List items
         if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
           return (
-            <li key={i} className="ml-4 text-sm leading-relaxed text-foreground/80">
+            <li
+              key={i}
+              className="ml-4 text-sm leading-relaxed text-foreground/80"
+            >
               {renderInline(trimmed.slice(2))}
             </li>
           );
         }
 
-        // Regular paragraph
         return (
           <p key={i} className="text-sm leading-relaxed text-foreground/80">
             {renderInline(trimmed)}
@@ -122,13 +122,11 @@ function TextBlock({ content }: { content: string }) {
 }
 
 function renderInline(text: string) {
-  // Handle **bold** and *italic*
   const parts: React.ReactNode[] = [];
   let remaining = text;
   let key = 0;
 
   while (remaining.length > 0) {
-    // Bold
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
     if (boldMatch && boldMatch.index !== undefined) {
       if (boldMatch.index > 0) {
@@ -143,7 +141,6 @@ function renderInline(text: string) {
       continue;
     }
 
-    // No more matches
     parts.push(remaining);
     break;
   }
@@ -165,33 +162,165 @@ function ImageBlock({ data, mimeType }: { data: string; mimeType: string }) {
   );
 }
 
+/** Animated dots for loading states */
+function PulsingDots() {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <span className="h-1 w-1 animate-pulse rounded-full bg-current" />
+      <span className="h-1 w-1 animate-pulse rounded-full bg-current [animation-delay:150ms]" />
+      <span className="h-1 w-1 animate-pulse rounded-full bg-current [animation-delay:300ms]" />
+    </span>
+  );
+}
+
+/** Collapsible chain-of-thought section */
+function ThinkingSection({ lines }: { lines: string[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  if (lines.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-lg border border-border/50 bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <Brain className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium">Chain of thought</span>
+        <span className="text-xs">({lines.length} steps)</span>
+        <ChevronDown
+          className={`ml-auto h-3.5 w-3.5 transition-transform duration-200 ${
+            isOpen ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {isOpen && (
+        <div className="border-t border-border/50 px-4 py-3">
+          <div className="space-y-1.5 font-mono text-xs text-muted-foreground">
+            {lines.map((line, i) => (
+              <p key={i} className="leading-relaxed">
+                {line}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CampaignOutput({
   workspaceSlug,
   projectId,
   projectName,
   campaign,
-  parts,
+  parts: initialParts,
 }: Props) {
   const base = `/w/${workspaceSlug}`;
   const Icon = MEDIA_TYPE_ICONS[campaign.mediaType] ?? Globe;
+
+  // Streaming state
+  const [streamedParts, setStreamedParts] = useState<Part[]>([]);
+  const [thinking, setThinking] = useState<string[]>([]);
+  const [status, setStatus] = useState(campaign.status);
+  const [phase, setPhase] = useState<"idle" | "thinking" | "creating" | "done">(
+    campaign.status === "generating" ? "thinking" : "done"
+  );
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Use initial parts if already completed, otherwise use streamed parts
+  const parts = initialParts.length > 0 ? initialParts : streamedParts;
+
+  // Auto-scroll to bottom as new content streams in
+  useEffect(() => {
+    if (phase === "done") return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [streamedParts, thinking, phase]);
+
+  // Connect to SSE stream when campaign is generating
+  useEffect(() => {
+    if (campaign.status !== "generating") return;
+
+    const eventSource = new EventSource(
+      `/api/campaigns/${campaign.id}/stream`
+    );
+
+    eventSource.addEventListener("thinking", (e) => {
+      const data = JSON.parse(e.data);
+      setPhase("thinking");
+      // Don't duplicate partial thinking lines — only add complete ones
+      if (!data.partial) {
+        setThinking((prev) => [...prev, data.text]);
+      }
+    });
+
+    eventSource.addEventListener("part", (e) => {
+      const data = JSON.parse(e.data);
+      setPhase("creating");
+
+      if (data.type === "text") {
+        // Append partial text to the last text part, or create a new one
+        setStreamedParts((prev) => {
+          const last = prev[prev.length - 1];
+          if (last && last.type === "text") {
+            // Append to existing text part
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              type: "text",
+              content: last.content + data.content,
+            };
+            return updated;
+          }
+          // New text part (after an image, or first part)
+          return [...prev, { type: "text" as const, content: data.content }];
+        });
+      } else {
+        // Images arrive complete
+        setStreamedParts((prev) => [...prev, data]);
+      }
+    });
+
+    eventSource.addEventListener("done", () => {
+      setStatus("completed");
+      setPhase("done");
+      eventSource.close();
+    });
+
+    eventSource.addEventListener("error", (e) => {
+      // EventSource fires generic error on connection close too
+      if (eventSource.readyState === EventSource.CLOSED) return;
+      console.error("SSE error:", e);
+      setStatus("failed");
+      setPhase("done");
+      eventSource.close();
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [campaign.id, campaign.status]);
 
   const statusConfig: Record<string, { label: string; className: string }> = {
     draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
     generating: {
       label: "Generating",
-      className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200",
+      className:
+        "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200",
     },
     completed: {
       label: "Completed",
-      className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200",
+      className:
+        "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200",
     },
     failed: {
       label: "Failed",
-      className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200",
+      className:
+        "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200",
     },
   };
 
-  const status = statusConfig[campaign.status] ?? statusConfig.draft;
+  const statusInfo = statusConfig[status] ?? statusConfig.draft;
 
   return (
     <div className="px-8 py-10">
@@ -215,13 +344,14 @@ export function CampaignOutput({
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-lg font-semibold tracking-tight">
-                    {MEDIA_TYPE_LABELS[campaign.mediaType] ?? campaign.mediaType}
+                    {MEDIA_TYPE_LABELS[campaign.mediaType] ??
+                      campaign.mediaType}
                   </h1>
                   <Badge
                     variant="secondary"
-                    className={`text-[10px] ${status.className}`}
+                    className={`text-[10px] ${statusInfo.className}`}
                   >
-                    {status.label}
+                    {statusInfo.label}
                   </Badge>
                 </div>
                 <p className="mt-0.5 text-sm text-muted-foreground line-clamp-1">
@@ -234,36 +364,35 @@ export function CampaignOutput({
 
         <Separator className="mb-8" />
 
-        {/* Content */}
-        {campaign.status === "generating" && (
-          <div className="flex flex-col items-center gap-4 py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">
-              Generating your content...
-            </p>
-          </div>
-        )}
-
-        {campaign.status === "failed" && (
-          <div className="flex flex-col items-center gap-3 py-20">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+        {/* Thinking phase indicator */}
+        {phase === "thinking" && parts.length === 0 && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+            <Brain className="h-4 w-4 animate-pulse text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                Planning your content <PulsingDots />
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Retrieving brand knowledge and crafting a creative brief
+              </p>
             </div>
-            <p className="text-sm font-medium">Generation failed</p>
-            <p className="text-xs text-muted-foreground">
-              Try creating a new campaign with a different prompt.
+          </div>
+        )}
+
+        {/* Chain of thought (collapsible) */}
+        <ThinkingSection lines={thinking} />
+
+        {/* Creating phase indicator (shown while streaming parts) */}
+        {phase === "creating" && (
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="text-sm font-medium">
+              Generating content <PulsingDots />
             </p>
           </div>
         )}
 
-        {campaign.status === "completed" && parts.length === 0 && (
-          <div className="flex flex-col items-center gap-3 py-20">
-            <p className="text-sm text-muted-foreground">
-              No output available.
-            </p>
-          </div>
-        )}
-
+        {/* Content: streamed or loaded from DB */}
         {parts.length > 0 && (
           <div>
             {parts.map((part, i) => {
@@ -283,6 +412,31 @@ export function CampaignOutput({
             })}
           </div>
         )}
+
+        {/* Failed state */}
+        {status === "failed" && parts.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+            </div>
+            <p className="text-sm font-medium">Generation failed</p>
+            <p className="text-xs text-muted-foreground">
+              Try creating a new campaign with a different prompt.
+            </p>
+          </div>
+        )}
+
+        {/* Completed with no output */}
+        {status === "completed" && parts.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-20">
+            <p className="text-sm text-muted-foreground">
+              No output available.
+            </p>
+          </div>
+        )}
+
+        {/* Scroll anchor for auto-scroll during streaming */}
+        <div ref={bottomRef} />
       </div>
     </div>
   );
