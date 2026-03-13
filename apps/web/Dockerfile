@@ -4,29 +4,19 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@10.20.0 --activate
 
-# ---- Dependencies ----
-FROM base AS deps
+# ---- Install ----
+FROM base AS install
 WORKDIR /app
 
-# Copy workspace root configs + all package.json files for install
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
-COPY apps/web/package.json apps/web/
-COPY apps/agent-service/package.json apps/agent-service/
-COPY packages/db/package.json packages/db/
-COPY packages/auth/package.json packages/auth/
-COPY packages/contracts/package.json packages/contracts/
-COPY packages/prompts/package.json packages/prompts/
-COPY packages/types/package.json packages/types/
-COPY packages/ui/package.json packages/ui/
+# Copy everything needed (node_modules excluded via .dockerignore)
+COPY . .
 
+# Install all dependencies
 RUN pnpm install --frozen-lockfile
 
 # ---- Build ----
-FROM deps AS build
+FROM install AS build
 WORKDIR /app
-
-# Copy all source code
-COPY . .
 
 # Generate Prisma client, then build web and its dependencies
 RUN pnpm --filter @wisestory/db exec prisma generate
