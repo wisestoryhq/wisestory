@@ -65,13 +65,23 @@ function TextBlock({ content }: { content: string }) {
         const trimmed = line.trim();
         if (!trimmed) return <br key={i} />;
 
+        if (trimmed.startsWith("#### ")) {
+          return (
+            <h4
+              key={i}
+              className="mt-5 mb-1.5 text-sm font-semibold tracking-tight"
+            >
+              {renderInline(trimmed.slice(5))}
+            </h4>
+          );
+        }
         if (trimmed.startsWith("### ")) {
           return (
             <h3
               key={i}
               className="mt-6 mb-2 text-base font-semibold tracking-tight"
             >
-              {trimmed.slice(4)}
+              {renderInline(trimmed.slice(4))}
             </h3>
           );
         }
@@ -81,7 +91,7 @@ function TextBlock({ content }: { content: string }) {
               key={i}
               className="mt-8 mb-3 text-lg font-semibold tracking-tight"
             >
-              {trimmed.slice(3)}
+              {renderInline(trimmed.slice(3))}
             </h2>
           );
         }
@@ -91,7 +101,7 @@ function TextBlock({ content }: { content: string }) {
               key={i}
               className="mt-8 mb-3 text-xl font-semibold tracking-tight"
             >
-              {trimmed.slice(2)}
+              {renderInline(trimmed.slice(2))}
             </h1>
           );
         }
@@ -107,6 +117,19 @@ function TextBlock({ content }: { content: string }) {
               className="ml-4 text-sm leading-relaxed text-foreground/80"
             >
               {renderInline(trimmed.slice(2))}
+            </li>
+          );
+        }
+
+        // Numbered lists (e.g., "1. ", "2. ")
+        const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
+        if (numberedMatch) {
+          return (
+            <li
+              key={i}
+              className="ml-4 text-sm leading-relaxed text-foreground/80 list-decimal"
+            >
+              {renderInline(numberedMatch[2])}
             </li>
           );
         }
@@ -127,8 +150,16 @@ function renderInline(text: string) {
   let key = 0;
 
   while (remaining.length > 0) {
+    // Bold: **text**
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/);
-    if (boldMatch && boldMatch.index !== undefined) {
+    // Italic: *text* (but not **)
+    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/);
+
+    // Pick the earliest match
+    const boldIdx = boldMatch?.index ?? Infinity;
+    const italicIdx = italicMatch?.index ?? Infinity;
+
+    if (boldIdx <= italicIdx && boldMatch && boldMatch.index !== undefined) {
       if (boldMatch.index > 0) {
         parts.push(remaining.slice(0, boldMatch.index));
       }
@@ -138,6 +169,19 @@ function renderInline(text: string) {
         </strong>
       );
       remaining = remaining.slice(boldMatch.index + boldMatch[0].length);
+      continue;
+    }
+
+    if (italicMatch && italicMatch.index !== undefined) {
+      if (italicMatch.index > 0) {
+        parts.push(remaining.slice(0, italicMatch.index));
+      }
+      parts.push(
+        <em key={key++} className="italic">
+          {italicMatch[1]}
+        </em>
+      );
+      remaining = remaining.slice(italicMatch.index + italicMatch[0].length);
       continue;
     }
 

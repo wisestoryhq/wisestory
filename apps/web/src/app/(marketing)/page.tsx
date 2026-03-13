@@ -1,17 +1,7 @@
 "use client";
 
-import { Button, buttonVariants } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
   Sparkles,
@@ -37,7 +27,6 @@ export default function Home() {
           </div>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground sm:flex">
             <a href="#features" className="transition-colors hover:text-foreground">Features</a>
-            <a href="#components" className="transition-colors hover:text-foreground">Components</a>
           </nav>
           <Link href="/login" className={buttonVariants({ size: "sm" })}>
               Sign in
@@ -127,99 +116,6 @@ export default function Home() {
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Component showcase */}
-      <section id="components" className="border-b">
-        <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
-          <div className="mb-12">
-            <p className="text-sm font-medium text-primary">Design system</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Component library
-            </h2>
-          </div>
-
-          <div className="grid gap-12">
-            {/* Buttons */}
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div>
-                <h3 className="text-sm font-medium">Buttons</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Actions & navigation</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button>Primary</Button>
-                <Button variant="secondary">Secondary</Button>
-                <Button variant="outline">Outline</Button>
-                <Button variant="ghost">Ghost</Button>
-                <Button variant="destructive">Destructive</Button>
-                <Button variant="link">Link</Button>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Badges */}
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div>
-                <h3 className="text-sm font-medium">Badges</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Status & labels</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <Badge>Default</Badge>
-                <Badge variant="secondary">Secondary</Badge>
-                <Badge variant="outline">Outline</Badge>
-                <Badge variant="destructive">Destructive</Badge>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Inputs */}
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div>
-                <h3 className="text-sm font-medium">Inputs</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Form controls</p>
-              </div>
-              <div className="flex flex-col gap-3 max-w-sm">
-                <Input placeholder="Workspace name" />
-                <Input placeholder="Search stories..." type="search" />
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Cards */}
-            <div className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div>
-                <h3 className="text-sm font-medium">Cards</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Content containers</p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Brand Campaign</CardTitle>
-                    <CardDescription>4 outputs generated</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="text-xs">Blog</Badge>
-                      <Badge variant="secondary" className="text-xs">Social</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-48" />
-                  </CardHeader>
-                  <CardContent>
-                    <Skeleton className="h-20 w-full rounded-md" />
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
           </div>
         </div>
       </section>
