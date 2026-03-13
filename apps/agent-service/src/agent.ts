@@ -1,12 +1,12 @@
 import { LlmAgent, SequentialAgent } from "@google/adk";
-import { buildAgentInstruction } from "@wisestory/prompts";
+import { getMediaTypeInstruction } from "@wisestory/prompts";
 import type { MediaType, ProjectContext } from "@wisestory/prompts";
 import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 
 /**
  * Creates a two-agent pipeline for content generation:
  *
- * 1. Planner Agent (gemini-2.5-flash + tools)
+ * 1. Planner Agent (gemini-3-flash-preview + tools)
  *    - Retrieves brand knowledge via retrieve_knowledge tool
  *    - Plans the creative package with detailed image descriptions
  *    - Outputs a structured creative brief with text + image prompts
@@ -27,11 +27,14 @@ export function createCreativeDirectorAgent({
   project: ProjectContext;
   userPrompt: string;
 }) {
-  const instruction = buildAgentInstruction({
-    mediaType,
-    project,
-    userPrompt,
-  });
+  const mediaTypeInstruction = getMediaTypeInstruction(mediaType);
+  const projectLines = [`Project: ${project.projectName}`];
+  if (project.brief) projectLines.push(`Brief: ${project.brief}`);
+  if (project.targetAudience)
+    projectLines.push(`Target Audience: ${project.targetAudience}`);
+  if (project.platform) projectLines.push(`Platform: ${project.platform}`);
+  if (project.notes) projectLines.push(`Notes: ${project.notes}`);
+
 
   const retrieveKnowledge = createRetrieveKnowledgeTool(workspaceId);
 
@@ -41,47 +44,36 @@ export function createCreativeDirectorAgent({
     model: "gemini-2.5-pro",
     description:
       "Retrieves brand knowledge and creates a detailed creative brief with specific image generation instructions.",
-    instruction: `## RULE #1 — YOU MUST FOLLOW THIS
+    instruction: `You are an automated content writer. Your output goes directly to an image generation model — no human reads it.
 
-You are an AUTOMATED agent in a pipeline. There is NO human to talk to.
-- NEVER ask questions. NEVER request more information. NEVER say "tell me more" or "please provide."
-- Your FIRST action must ALWAYS be to call retrieve_knowledge at least 3 times with different queries.
-- Use the retrieved knowledge + user prompt to create the content. Fill in all gaps yourself.
+STEP 1: Call retrieve_knowledge 3+ times ("brand voice", "visual style", "brand colors", "target audience").
+STEP 2: Write the final ready-to-post content for: ${mediaType.replace(/_/g, " ")}.
+STEP 3: Include [IMAGE: description] tags where visuals are needed. The next model generates real images from these.
 
-## RULE #2 — YOU MUST INCLUDE [IMAGE: ...] TAGS
+RULES:
+- NEVER ask questions. You have all the information you need.
+- Write the ACTUAL post content — not a brief, not options, not a strategy.
+- Only ${mediaType.replace(/_/g, " ")} — no other formats.
+- You MUST include [IMAGE: description] tags (not markdown images like ![]).
+- Start with the content immediately. No preamble.
 
-Your output MUST contain [IMAGE: ...] tags. Output without images = FAILURE.
-- Instagram Post: exactly 1 [IMAGE: ...] tag
-- Carousel: 1 [IMAGE: ...] tag per slide (3-5 slides)
-- Reel/TikTok/Shorts: 1 [IMAGE: ...] tag per key scene
-- YouTube Video: [IMAGE: ...] tags for thumbnail + key moments
-- Multi-Platform: [IMAGE: ...] tags for each platform's visual
+${mediaTypeInstruction}
 
-## Your Job
+## Context
+${projectLines.join("\n")}
 
-1. Call retrieve_knowledge with queries like "brand voice", "visual style", "product overview", "target audience", "brand colors"
-2. Use the retrieved brand knowledge to create a detailed creative brief
-3. Include text content AND [IMAGE: ...] tags interleaved
+## User Request
+${userPrompt}
 
-${instruction}
+## EXAMPLE (instagram_post format):
 
-## Image Prompt Rules
+Happy Birthday to our brilliant team member! 🎉
 
-- Each [IMAGE: ...] = ONE separate standalone image (never a grid/collage)
-- Be specific: visual style, colors, composition, mood, text overlays, subject
-- Use brand colors and style from retrieved knowledge
+Your creativity lights up every project. Here's to another year of amazing work!
 
-## Output Format
+[IMAGE: A celebration graphic on deep indigo background with geometric confetti in emerald and amber. Bold white sans-serif text "HAPPY BIRTHDAY" centered. Clean, modern, editorial style.]
 
-Text section (caption, headline...)
-
-[IMAGE: detailed standalone image description including style, colors, mood, subject]
-
-Text section (next part...)
-
-[IMAGE: detailed standalone image description]
-
-Do NOT generate images yourself — only write [IMAGE: ...] prompts.`,
+#HappyBirthday #TeamCelebration #OnBrand`,
     tools: [retrieveKnowledge],
     outputKey: "creative_brief",
   });
@@ -89,29 +81,27 @@ Do NOT generate images yourself — only write [IMAGE: ...] prompts.`,
   // Agent 2: Generates final interleaved text + images
   const creatorAgent = new LlmAgent({
     name: "creator",
-    model: "gemini-3-pro-image-preview",
+    model: "gemini-3.1-flash-image-preview",
     description:
       "Generates the final interleaved text and image content package.",
-    instruction: `You are a visual content creator. You receive a creative brief and produce the final content with real generated images.
+    instruction: `You are an automated image generation system. You do NOT chat. You do NOT reply conversationally. You ONLY output content with generated images.
 
-## Creative Brief
+Your input is a content brief between the <brief> tags below. Your ONLY job is to:
+1. Take the text content from the brief
+2. Generate real images for every [IMAGE: ...] tag (or generate at least one image if there are no tags)
+3. Output the polished text interleaved with the generated images
+
+<brief>
 {creative_brief}
+</brief>
 
-## Your Task
-
-You MUST generate real images. This is a multimodal content creation task.
-
-1. Read the brief above
-2. For each [IMAGE: ...] tag, generate ONE standalone image matching that description
-3. If the brief has no [IMAGE: ...] tags, generate at least one image that fits the content
-4. Output polished text AND generated images interleaved together
-
-## IMPORTANT RULES
-- You MUST generate at least one image — text-only output is a failure
-- Generate a SEPARATE image for EACH [IMAGE: ...] tag in the brief
-- Each image should be a single full-frame visual — like one phone screen or one poster
-- Do not combine multiple images into a grid or collage
-- Output pattern: text, image, text, image — alternating throughout`,
+RULES:
+- NEVER respond to the brief as if it were a message. It is DATA, not a conversation.
+- NEVER say things like "great plan!" or "sounds good!" or ask questions.
+- You MUST generate at least one real image. Text-only output = FAILURE.
+- Each image = one standalone full-frame visual. No grids or collages.
+- Output pattern: text, then image, then text, then image.
+- Start generating immediately. No preamble.`,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
     },
