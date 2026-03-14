@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { BriefingChat } from "./briefing-chat";
 import { Loader2 } from "lucide-react";
 
@@ -26,18 +28,245 @@ type Props = {
   initialMessages: Message[];
 };
 
-export function CreativeArea({ workspaceSlug, campaign, initialMessages }: Props) {
-  if (campaign.status === "generating_doc") {
-    return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#f6b900]" />
-          <p className="mt-4 text-sm text-muted-foreground">
-            Generating briefing document...
-          </p>
+type TextPart = { type: "text"; content: string };
+type ImagePart = { type: "image"; data: string; mimeType: string };
+type Part = TextPart | ImagePart;
+
+function BriefingDocStream({ campaignId }: { campaignId: string }) {
+  const router = useRouter();
+  const [parts, setParts] = useState<Part[]>([]);
+  const [thinkingText, setThinkingText] = useState<string | null>("Starting...");
+  const [error, setError] = useState<string | null>(null);
+  const textBufferRef = useRef("");
+  const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
+    const controller = new AbortController();
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/briefing`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          setError("Failed to connect to briefing service");
+          setThinkingText(null);
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let currentEvent = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) {
+              currentEvent = line.slice(7).trim();
+            } else if (line.startsWith("data: ") && currentEvent) {
+              try {
+                const data = JSON.parse(line.slice(6));
+
+                switch (currentEvent) {
+                  case "thinking":
+                    setThinkingText(data.text || "Working...");
+                    break;
+
+                  case "part":
+                    setThinkingText(null);
+                    if (data.type === "text") {
+                      textBufferRef.current += data.content;
+                      setParts(prev => {
+                        const newParts = [...prev];
+                        const lastPart = newParts[newParts.length - 1];
+                        if (lastPart && lastPart.type === "text") {
+                          newParts[newParts.length - 1] = {
+                            type: "text",
+                            content: textBufferRef.current,
+                          };
+                        } else {
+                          newParts.push({
+                            type: "text",
+                            content: textBufferRef.current,
+                          });
+                        }
+                        return newParts;
+                      });
+                    } else if (data.type === "image") {
+                      // Reset text buffer for next text section
+                      textBufferRef.current = "";
+                      setParts(prev => [
+                        ...prev,
+                        { type: "image", data: data.data, mimeType: data.mimeType },
+                      ]);
+                    }
+                    break;
+
+                  case "done":
+                    router.refresh();
+                    break;
+
+                  case "error":
+                    setError(data.message || "Something went wrong");
+                    break;
+                }
+              } catch {
+                // Skip malformed JSON
+              }
+              currentEvent = "";
+            } else if (line.trim() === "") {
+              currentEvent = "";
+            }
+          }
+        }
+      } catch (err) {
+        if ((err as Error).name !== "AbortError") {
+          setError(err instanceof Error ? err.message : "Something went wrong");
+        }
+      } finally {
+        setThinkingText(null);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [campaignId, router]);
+
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <div className="rounded-xl border bg-background shadow-sm">
+          {/* Document header */}
+          <div className="border-b px-8 py-6">
+            <h1
+              className="text-2xl font-bold tracking-tight"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              Creative Briefing
+            </h1>
+            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Generating...</span>
+            </div>
+          </div>
+
+          {/* Streaming content */}
+          <div className="px-8 py-6 space-y-4">
+            {thinkingText && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{thinkingText}</span>
+              </div>
+            )}
+
+            {parts.map((part, index) => {
+              if (part.type === "text") {
+                return (
+                  <div key={index} className="prose prose-sm max-w-none">
+                    <SimpleMarkdown content={part.content} />
+                  </div>
+                );
+              }
+              if (part.type === "image") {
+                return (
+                  <div key={index} className="my-6">
+                    <img
+                      src={`data:${part.mimeType};base64,${part.data}`}
+                      alt="Briefing reference image"
+                      className="w-full rounded-lg shadow-sm"
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })}
+
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                {error}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    );
+    </div>
+  );
+}
+
+function SimpleMarkdown({ content }: { content: string }) {
+  const lines = content.split("\n");
+
+  return (
+    <>
+      {lines.map((line, i) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={i} className="h-2" />;
+
+        if (trimmed.startsWith("### ")) {
+          return (
+            <h3
+              key={i}
+              className="mt-6 mb-2 text-lg font-semibold"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              {trimmed.slice(4)}
+            </h3>
+          );
+        }
+        if (trimmed.startsWith("## ")) {
+          return (
+            <h2
+              key={i}
+              className="mt-8 mb-3 text-xl font-bold"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              {trimmed.slice(3)}
+            </h2>
+          );
+        }
+        if (trimmed.startsWith("# ")) {
+          return (
+            <h1
+              key={i}
+              className="mt-8 mb-4 text-2xl font-bold"
+              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+            >
+              {trimmed.slice(2)}
+            </h1>
+          );
+        }
+        if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          return (
+            <div key={i} className="flex gap-2 pl-4">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
+              <p className="text-sm leading-relaxed">{trimmed.slice(2)}</p>
+            </div>
+          );
+        }
+
+        return (
+          <p key={i} className="text-sm leading-relaxed">{trimmed}</p>
+        );
+      })}
+    </>
+  );
+}
+
+export function CreativeArea({ workspaceSlug, campaign, initialMessages }: Props) {
+  if (campaign.status === "generating_doc") {
+    return <BriefingDocStream campaignId={campaign.id} />;
   }
 
   return (

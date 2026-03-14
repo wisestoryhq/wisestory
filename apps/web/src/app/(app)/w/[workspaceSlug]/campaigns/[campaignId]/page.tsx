@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
-import { CampaignOutput } from "./campaign-output";
+import { BriefingDocument } from "./campaign-output";
 import { CreativeArea } from "./creative-area";
 
 type Params = {
@@ -71,7 +71,7 @@ export default async function CampaignPage({
   const parts = (output?.parts as Array<Record<string, string>>) ?? [];
 
   return (
-    <CampaignOutput
+    <BriefingDocument
       workspaceSlug={workspaceSlug}
       campaign={{
         id: campaign.id,
