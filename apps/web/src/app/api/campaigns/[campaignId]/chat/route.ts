@@ -43,7 +43,7 @@ export async function POST(
   }
 
   const body = await req.json();
-  const { message, messageHistory } = body;
+  const { message } = body;
 
   if (!message) {
     return new Response("Missing message", { status: 400 });
@@ -58,7 +58,6 @@ export async function POST(
       campaignId,
       workspaceId: campaign.workspace.id,
       message,
-      messageHistory: messageHistory ?? [],
       mediaType: campaign.mediaType,
     }),
   });

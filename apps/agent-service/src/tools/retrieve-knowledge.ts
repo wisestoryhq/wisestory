@@ -14,6 +14,52 @@ async function embedQuery(text: string): Promise<number[]> {
 }
 
 /**
+ * Directly retrieves brand knowledge from the workspace knowledge base.
+ * Used by the chat endpoint to pre-fetch brand context before passing to the agent.
+ */
+export async function retrieveKnowledge(
+  workspaceId: string,
+  query: string,
+  maxResults = 15
+): Promise<Array<{ content: string; similarity: number; source: string; driveUrl: string | null }>> {
+  const queryEmbedding = await embedQuery(query);
+  if (queryEmbedding.length === 0) return [];
+
+  const vectorStr = `[${queryEmbedding.join(",")}]`;
+
+  const results: Array<{
+    content: string;
+    similarity: number;
+    fileName: string;
+    driveUrl: string | null;
+  }> = await prisma.$queryRawUnsafe(
+    `
+    SELECT
+      kc.content,
+      1 - (kc.embedding::vector <=> $1::vector) as similarity,
+      sf.name as "fileName",
+      sf."driveUrl"
+    FROM knowledge_chunks kc
+    JOIN source_files sf ON sf.id = kc."sourceFileId"
+    WHERE kc."workspaceId" = $2
+      AND sf.status = 'indexed'
+    ORDER BY kc.embedding::vector <=> $1::vector
+    LIMIT $3
+    `,
+    vectorStr,
+    workspaceId,
+    maxResults,
+  );
+
+  return results.map((r) => ({
+    content: r.content,
+    similarity: Math.round(r.similarity * 100) / 100,
+    source: r.fileName,
+    driveUrl: r.driveUrl,
+  }));
+}
+
+/**
  * Creates a retrieve_knowledge tool scoped to a specific workspace.
  * The workspaceId is captured in the closure for tenant isolation.
  */

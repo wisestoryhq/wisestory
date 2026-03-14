@@ -52,58 +52,9 @@ export async function createCampaign(input: CreateCampaignInput) {
 }
 
 /**
- * Saves a user message to the campaign's message history.
+ * Transitions campaign to "generating_doc" status to trigger briefing document generation.
  */
-export async function saveUserMessage(campaignId: string, content: string) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-
-  const campaign = await prisma.campaign.findFirst({
-    where: {
-      id: campaignId,
-      workspace: { members: { some: { userId: session.user.id } } },
-    },
-  });
-  if (!campaign) throw new Error("Campaign not found");
-
-  return prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      role: "user",
-      content,
-    },
-  });
-}
-
-/**
- * Saves an assistant message to the campaign's message history.
- */
-export async function saveAssistantMessage(
-  campaignId: string,
-  content: string,
-  images?: Array<{ data: string; mimeType: string }>
-) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-
-  return prisma.campaignMessage.create({
-    data: {
-      campaignId,
-      role: "assistant",
-      content,
-      images: images && images.length > 0 ? (images as unknown as import("@wisestory/db").Prisma.InputJsonValue) : undefined,
-    },
-  });
-}
-
-/**
- * Approves the briefing and transitions the campaign to "generating" status.
- */
-export async function approveBriefing(
+export async function generateBriefingDoc(
   campaignId: string,
   briefingSummary: string
 ) {
@@ -125,7 +76,7 @@ export async function approveBriefing(
     where: { id: campaignId },
     data: {
       briefingSummary,
-      status: "generating",
+      status: "generating_doc",
     },
   });
 }
@@ -151,71 +102,6 @@ export async function getCampaignMessages(campaignId: string) {
     where: { campaignId },
     orderBy: { createdAt: "asc" },
   });
-}
-
-/**
- * Generates a single production image via the agent service.
- */
-export async function generateFinalImage(
-  campaignId: string,
-  imageSpec: {
-    workspaceId: string;
-    briefingSummary: string;
-    imageDescription: string;
-    mediaType: string;
-    imageIndex: number;
-  }
-) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-
-  const agentUrl = process.env.AGENT_SERVICE_URL ?? "http://localhost:3001";
-
-  const response = await fetch(`${agentUrl}/generate/image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...imageSpec, campaignId }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(err.error || "Image generation failed");
-  }
-
-  const result = await response.json();
-  return result as { image: { data: string; mimeType: string } };
-}
-
-/**
- * Generates a caption + hashtags via the agent service.
- */
-export async function generateCaption(
-  workspaceId: string,
-  briefingSummary: string,
-  mediaType: string
-) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) redirect("/login");
-
-  const agentUrl = process.env.AGENT_SERVICE_URL ?? "http://localhost:3001";
-
-  const response = await fetch(`${agentUrl}/generate/caption`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId, briefingSummary, mediaType }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Unknown error" }));
-    throw new Error(err.error || "Caption generation failed");
-  }
-
-  const result = await response.json();
-  return result as { caption: string };
 }
 
 /**

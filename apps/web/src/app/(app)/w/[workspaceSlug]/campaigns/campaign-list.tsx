@@ -45,8 +45,12 @@ const MEDIA_TYPE_ICONS: Record<string, React.ElementType> = {
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   draft: { label: "Draft", className: "bg-muted text-muted-foreground" },
-  generating: {
-    label: "Generating",
+  briefing: {
+    label: "Briefing",
+    className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200",
+  },
+  generating_doc: {
+    label: "Generating...",
     className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200",
   },
   completed: {

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { approveBriefing } from "@/app/actions/campaign";
+import { generateBriefingDoc } from "@/app/actions/campaign";
 import { ChatMessage } from "./chat-message";
 import {
   ArrowLeft,
@@ -105,14 +105,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // Build message history for context (agent service saves messages to DB)
-    const messageHistory = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-      images: m.images.length > 0 ? m.images : undefined,
-    }));
-
-    // Stream response from agent service
+    // Stream response from agent service (server loads history from DB)
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -125,7 +118,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: messageText.trim(),
-          messageHistory,
         }),
         signal: controller.signal,
       });
@@ -173,33 +165,31 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                   setThinkingText(data.text || "Researching...");
                   break;
 
-                case "briefing_started":
+                case "part":
                   setThinkingText(null);
-                  break;
-
-                case "text":
-                  assistantContent += data.content;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, content: assistantContent }
-                        : m
-                    )
-                  );
-                  break;
-
-                case "image":
-                  assistantImages.push({
-                    data: data.data,
-                    mimeType: data.mimeType,
-                  });
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, images: [...assistantImages] }
-                        : m
-                    )
-                  );
+                  if (data.type === "text") {
+                    // Delta append (not replace!)
+                    assistantContent += data.content;
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, content: assistantContent }
+                          : m
+                      )
+                    );
+                  } else if (data.type === "image") {
+                    assistantImages.push({
+                      data: data.data,
+                      mimeType: data.mimeType,
+                    });
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMsgId
+                          ? { ...m, images: [...assistantImages] }
+                          : m
+                      )
+                    );
+                  }
                   break;
 
                 case "done":
@@ -230,7 +220,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
       setThinkingText(null);
       abortRef.current = null;
     }
-  }, [campaign.id, messages]);
+  }, [campaign.id]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -247,7 +237,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     }
   }
 
-  async function handleApproveBriefing() {
+  async function handleGenerateBriefing() {
     setIsApproving(true);
     try {
       // Extract the last assistant message as the briefing summary
@@ -256,10 +246,10 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         .find((m) => m.role === "assistant");
       const summary = lastAssistant?.content || campaign.prompt;
 
-      await approveBriefing(campaign.id, summary);
+      await generateBriefingDoc(campaign.id, summary);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to approve briefing");
+      setError(err instanceof Error ? err.message : "Failed to generate briefing");
       setIsApproving(false);
     }
   }
@@ -287,7 +277,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         {hasAssistantResponse && !isStreaming && (
           <Button
             size="sm"
-            onClick={handleApproveBriefing}
+            onClick={handleGenerateBriefing}
             disabled={isApproving}
             className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
           >
@@ -296,7 +286,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             ) : (
               <CheckCircle2 className="h-3.5 w-3.5" />
             )}
-            Approve Briefing
+            Generate Briefing
           </Button>
         )}
       </div>

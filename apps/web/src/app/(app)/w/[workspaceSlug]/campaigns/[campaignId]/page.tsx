@@ -40,8 +40,8 @@ export default async function CampaignPage({
 
   if (!campaign) notFound();
 
-  // Briefing phase: show the creative area with chat
-  if (campaign.status === "briefing" || campaign.status === "generating") {
+  // Briefing phase or generating doc: show the creative area
+  if (campaign.status === "briefing" || campaign.status === "generating_doc") {
     const messages = campaign.messages.map((m) => ({
       id: m.id,
       role: m.role as "user" | "assistant",

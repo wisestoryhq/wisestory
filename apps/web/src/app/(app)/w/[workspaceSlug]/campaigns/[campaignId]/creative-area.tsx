@@ -1,7 +1,7 @@
 "use client";
 
 import { BriefingChat } from "./briefing-chat";
-import { FinalGeneration } from "./final-generation";
+import { Loader2 } from "lucide-react";
 
 type Message = {
   id: string;
@@ -27,12 +27,16 @@ type Props = {
 };
 
 export function CreativeArea({ workspaceSlug, campaign, initialMessages }: Props) {
-  if (campaign.status === "generating") {
+  if (campaign.status === "generating_doc") {
     return (
-      <FinalGeneration
-        workspaceSlug={workspaceSlug}
-        campaign={campaign}
-      />
+      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-[#f6b900]" />
+          <p className="mt-4 text-sm text-muted-foreground">
+            Generating briefing document...
+          </p>
+        </div>
+      </div>
     );
   }
 
