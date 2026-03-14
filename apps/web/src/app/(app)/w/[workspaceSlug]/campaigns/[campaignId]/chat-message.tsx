@@ -123,7 +123,7 @@ export function ChatMessage({ message }: Props) {
                     <img
                       src={src}
                       alt={`Generated concept ${i + 1}`}
-                      className="h-48 w-auto object-contain"
+                      className="h-64 w-auto object-contain"
                     />
                   </button>
                 </div>
