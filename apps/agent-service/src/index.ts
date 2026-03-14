@@ -200,13 +200,19 @@ app.post("/chat/stream", async (c) => {
         });
         console.log(`[chat/stream] Saved: ${textBuffer.length} chars, ${collectedImages.length} images`);
 
-        // Fire-and-forget decision extraction into knowledge graph
-        void extractBriefingDecisions(
-          campaignId,
-          textBuffer,
-          collectedImages,
-          historyPreamble + message
-        ).catch(err => console.error("[chat/stream] Decision extraction failed:", err));
+        // Extract decisions into knowledge graph BEFORE sending done.
+        // This ensures the graph is up-to-date when the user can next interact.
+        try {
+          await extractBriefingDecisions(
+            campaignId,
+            textBuffer,
+            collectedImages,
+            historyPreamble + message
+          );
+        } catch (err) {
+          console.error("[chat/stream] Decision extraction failed:", err);
+          // Non-fatal — chat still works without graph
+        }
       }
 
       await stream.writeSSE({ event: "done", data: "{}" });

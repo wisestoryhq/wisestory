@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { BriefingChat } from "./briefing-chat";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 type Message = {
   id: string;
@@ -32,11 +33,12 @@ type TextPart = { type: "text"; content: string };
 type ImagePart = { type: "image"; data: string; mimeType: string };
 type Part = TextPart | ImagePart;
 
-function BriefingDocStream({ campaignId }: { campaignId: string }) {
+function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; workspaceSlug: string }) {
   const router = useRouter();
   const [parts, setParts] = useState<Part[]>([]);
   const [thinkingText, setThinkingText] = useState<string | null>("Starting...");
   const [error, setError] = useState<string | null>(null);
+  const [isDone, setIsDone] = useState(false);
   const textBufferRef = useRef("");
   const startedRef = useRef(false);
 
@@ -51,11 +53,15 @@ function BriefingDocStream({ campaignId }: { campaignId: string }) {
         const response = await fetch(`/api/campaigns/${campaignId}/briefing`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
           signal: controller.signal,
         });
 
         if (!response.ok || !response.body) {
-          setError("Failed to connect to briefing service");
+          const statusText = response.status === 502
+            ? "Agent service is not running. Start it and try again."
+            : `Failed to connect (${response.status})`;
+          setError(statusText);
           setThinkingText(null);
           return;
         }
@@ -106,7 +112,6 @@ function BriefingDocStream({ campaignId }: { campaignId: string }) {
                         return newParts;
                       });
                     } else if (data.type === "image") {
-                      // Reset text buffer for next text section
                       textBufferRef.current = "";
                       setParts(prev => [
                         ...prev,
@@ -116,11 +121,14 @@ function BriefingDocStream({ campaignId }: { campaignId: string }) {
                     break;
 
                   case "done":
+                    setIsDone(true);
+                    setThinkingText(null);
                     router.refresh();
                     break;
 
                   case "error":
                     setError(data.message || "Something went wrong");
+                    setThinkingText(null);
                     break;
                 }
               } catch {
@@ -146,6 +154,23 @@ function BriefingDocStream({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      {/* Header with back button */}
+      <div className="border-b bg-background">
+        <div className="mx-auto flex max-w-3xl items-center gap-4 px-6 py-3">
+          <Link
+            href={`/w/${workspaceSlug}/campaigns`}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-sm font-medium">
+              {isDone ? "Briefing Complete" : "Generating Briefing..."}
+            </h1>
+          </div>
+        </div>
+      </div>
+
       <div className="mx-auto max-w-3xl px-6 py-8">
         <div className="rounded-xl border bg-background shadow-sm">
           {/* Document header */}
@@ -156,10 +181,12 @@ function BriefingDocStream({ campaignId }: { campaignId: string }) {
             >
               Creative Briefing
             </h1>
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Generating...</span>
-            </div>
+            {!isDone && !error && (
+              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Generating...</span>
+              </div>
+            )}
           </div>
 
           {/* Streaming content */}
@@ -266,7 +293,7 @@ function SimpleMarkdown({ content }: { content: string }) {
 
 export function CreativeArea({ workspaceSlug, campaign, initialMessages }: Props) {
   if (campaign.status === "generating_doc") {
-    return <BriefingDocStream campaignId={campaign.id} />;
+    return <BriefingDocStream campaignId={campaign.id} workspaceSlug={workspaceSlug} />;
   }
 
   return (
