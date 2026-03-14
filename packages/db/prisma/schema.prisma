@@ -59,6 +59,14 @@ enum CampaignStatus {
   failed
 }
 
+enum SourceFileContentType {
+  document
+  logo
+  photo
+  pdf
+  other
+}
+
 // ─── User ───────────────────────────────────────────────────────────
 
 model User {
@@ -225,6 +233,8 @@ model SourceFile {
   driveUrl     String?
   size         Int?
   status       SourceFileStatus @default(pending)
+  contentType   SourceFileContentType @default(other)
+  imageData     String?
   extractedText String?
   errorMessage String?
   indexedAt     DateTime?

@@ -20,6 +20,16 @@ import {
   Brain,
   ChevronDown,
   Trash2,
+  Heart,
+  MessageCircle,
+  Send,
+  Bookmark,
+  Share2,
+  ThumbsUp,
+  ThumbsDown,
+  Volume2,
+  Maximize,
+  Music,
 } from "lucide-react";
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -196,18 +206,382 @@ function renderInline(text: string) {
   return parts;
 }
 
-function ImageBlock({ data, mimeType }: { data: string; mimeType: string }) {
-  const src = `data:${mimeType};base64,${data}`;
+/* ── Platform Mockup Frames ─────────────────────────────────────────── */
 
+function InstagramPostMockup({ src }: { src: string }) {
   return (
-    <div className="my-6 overflow-hidden rounded-xl border bg-muted/30">
-      <img
-        src={src}
-        alt="Generated content"
-        className="w-full object-contain"
-      />
+    <div className="mx-auto my-6 max-w-sm overflow-hidden rounded-xl border bg-white dark:bg-zinc-900">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-yellow-400" />
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">brand_name</p>
+          <p className="text-[10px] text-zinc-500">Sponsored</p>
+        </div>
+        <div className="flex gap-0.5">
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+        </div>
+      </div>
+      {/* Image */}
+      <img src={src} alt="Generated content" className="w-full object-contain" />
+      {/* Actions */}
+      <div className="flex items-center px-3 py-2.5">
+        <div className="flex gap-3">
+          <Heart className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+          <MessageCircle className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+          <Send className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+        </div>
+        <Bookmark className="ml-auto h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+      </div>
     </div>
   );
+}
+
+function InstagramCarouselMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-sm overflow-hidden rounded-xl border bg-white dark:bg-zinc-900">
+      {/* Header */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5">
+        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-pink-500 via-red-500 to-yellow-400" />
+        <div className="flex-1">
+          <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">brand_name</p>
+          <p className="text-[10px] text-zinc-500">Sponsored</p>
+        </div>
+        <div className="flex gap-0.5">
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+          <span className="h-1 w-1 rounded-full bg-zinc-400" />
+        </div>
+      </div>
+      {/* Image */}
+      <img src={src} alt="Generated content" className="w-full object-contain" />
+      {/* Carousel dots */}
+      <div className="flex justify-center gap-1 py-2">
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+        <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+        <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+      </div>
+      {/* Actions */}
+      <div className="flex items-center px-3 py-2.5">
+        <div className="flex gap-3">
+          <Heart className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+          <MessageCircle className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+          <Send className="h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+        </div>
+        <Bookmark className="ml-auto h-5 w-5 text-zinc-800 dark:text-zinc-200" />
+      </div>
+    </div>
+  );
+}
+
+function InstagramReelMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-xs">
+      <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+        {/* Image */}
+        <img src={src} alt="Generated content" className="w-full object-cover aspect-[9/16]" />
+        {/* Right-side icons overlay */}
+        <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-1">
+            <Heart className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">12.4K</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <MessageCircle className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">348</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Send className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">Share</span>
+          </div>
+        </div>
+        {/* Bottom info */}
+        <div className="absolute bottom-4 left-3 right-14">
+          <p className="text-xs font-semibold text-white drop-shadow">brand_name</p>
+          <p className="mt-0.5 text-[10px] text-white/80 drop-shadow line-clamp-2">Campaign content preview</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TikTokMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-xs">
+      <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+        {/* Image */}
+        <img src={src} alt="Generated content" className="w-full object-cover aspect-[9/16]" />
+        {/* Right sidebar icons */}
+        <div className="absolute right-3 bottom-24 flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-1">
+            <Heart className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">24.5K</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <MessageCircle className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">1,203</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Share2 className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">Share</span>
+          </div>
+          {/* Music disc */}
+          <div className="h-10 w-10 animate-[spin_3s_linear_infinite] rounded-full border-2 border-zinc-600 bg-zinc-800">
+            <Music className="m-auto mt-2 h-4 w-4 text-white" />
+          </div>
+        </div>
+        {/* Bottom info */}
+        <div className="absolute bottom-4 left-3 right-14">
+          <p className="text-xs font-bold text-white drop-shadow">@brand_name</p>
+          <p className="mt-0.5 text-[10px] text-white/80 drop-shadow line-clamp-2">Campaign content preview #fyp #branded</p>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <Music className="h-3 w-3 text-white" />
+            <p className="text-[10px] text-white/70 drop-shadow">Original Sound - brand_name</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function YouTubeShortsMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-xs">
+      <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+        {/* Image */}
+        <img src={src} alt="Generated content" className="w-full object-cover aspect-[9/16]" />
+        {/* Right-side icons */}
+        <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5">
+          <div className="flex flex-col items-center gap-1">
+            <ThumbsUp className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">8.2K</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <ThumbsDown className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">Dislike</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <MessageCircle className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">412</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <Share2 className="h-6 w-6 text-white drop-shadow" />
+            <span className="text-[10px] font-medium text-white drop-shadow">Share</span>
+          </div>
+        </div>
+        {/* Bottom info */}
+        <div className="absolute bottom-4 left-3 right-14">
+          <p className="text-xs font-semibold text-white drop-shadow">@brand_name</p>
+          <p className="mt-0.5 text-[10px] text-white/80 drop-shadow line-clamp-2">Campaign content preview</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function YouTubeVideoMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-xl border bg-black">
+      {/* Video area */}
+      <div className="relative">
+        <img src={src} alt="Generated content" className="w-full object-contain aspect-video" />
+      </div>
+      {/* Controls bar */}
+      <div className="flex items-center gap-3 bg-zinc-900 px-3 py-2">
+        <Play className="h-4 w-4 text-white" fill="white" />
+        {/* Progress bar */}
+        <div className="flex-1 h-1 rounded-full bg-zinc-700">
+          <div className="h-full w-1/3 rounded-full bg-red-600" />
+        </div>
+        <span className="text-[10px] text-zinc-400">0:15 / 0:45</span>
+        <Volume2 className="h-4 w-4 text-white" />
+        <Maximize className="h-4 w-4 text-white" />
+      </div>
+      {/* Title */}
+      <div className="bg-zinc-900 px-3 pb-3">
+        <p className="text-xs font-medium text-white">Campaign Content Preview</p>
+        <p className="text-[10px] text-zinc-400">brand_name &middot; 1 view &middot; Just now</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── ImageBlock with platform mockups ───────────────────────────────── */
+
+function ImageBlock({
+  data,
+  mimeType,
+  mediaType,
+}: {
+  data: string;
+  mimeType: string;
+  mediaType?: string;
+}) {
+  const src = `data:${mimeType};base64,${data}`;
+
+  switch (mediaType) {
+    case "instagram_post":
+      return <InstagramPostMockup src={src} />;
+    case "instagram_carousel":
+      return <InstagramCarouselMockup src={src} />;
+    case "instagram_reel":
+      return <InstagramReelMockup src={src} />;
+    case "tiktok_video":
+      return <TikTokMockup src={src} />;
+    case "youtube_shorts":
+      return <YouTubeShortsMockup src={src} />;
+    case "youtube_video":
+      return <YouTubeVideoMockup src={src} />;
+    default:
+      return (
+        <div className="my-6 overflow-hidden rounded-xl border bg-muted/30">
+          <img
+            src={src}
+            alt="Generated content"
+            className="w-full object-contain"
+          />
+        </div>
+      );
+  }
+}
+
+/* ── Image Skeleton Placeholder ───────────────────────────────────── */
+
+/** Shimmer placeholder for square (1:1) image areas */
+function SkeletonShimmer() {
+  return (
+    <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800/80">
+      <div className="aspect-square w-full animate-skeleton-breathe bg-gradient-to-b from-zinc-100 via-zinc-200/60 to-zinc-100 dark:from-zinc-800/80 dark:via-zinc-700/40 dark:to-zinc-800/80" />
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="animate-shimmer-sweep absolute inset-y-0 -left-full w-full bg-gradient-to-r from-transparent via-white/25 to-transparent dark:via-white/[0.07]" />
+      </div>
+    </div>
+  );
+}
+
+/** Shimmer placeholder for 9:16 vertical image areas */
+function SkeletonShimmer916() {
+  return (
+    <div className="relative w-full overflow-hidden bg-zinc-900">
+      <div className="aspect-[9/16] w-full animate-skeleton-breathe bg-gradient-to-b from-zinc-900 via-zinc-800/60 to-zinc-900" />
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="animate-shimmer-sweep absolute inset-y-0 -left-full w-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+      </div>
+    </div>
+  );
+}
+
+/** Shimmer placeholder for 16:9 landscape image areas */
+function SkeletonShimmerVideo() {
+  return (
+    <div className="relative w-full overflow-hidden bg-zinc-900">
+      <div className="aspect-video w-full animate-skeleton-breathe bg-gradient-to-b from-zinc-900 via-zinc-800/60 to-zinc-900" />
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="animate-shimmer-sweep absolute inset-y-0 -left-full w-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+      </div>
+    </div>
+  );
+}
+
+function ImageSkeleton({ mediaType }: { mediaType?: string }) {
+  switch (mediaType) {
+    case "instagram_post":
+      return (
+        <div className="mx-auto my-6 max-w-sm overflow-hidden rounded-xl border border-zinc-200/70 dark:border-zinc-700/50 bg-white dark:bg-zinc-900">
+          <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-20 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+              <div className="h-2 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+            </div>
+          </div>
+          <SkeletonShimmer />
+          <div className="flex items-center px-3 py-2.5">
+            <div className="flex gap-3">
+              <Heart className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+              <MessageCircle className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+              <Send className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+            </div>
+            <Bookmark className="ml-auto h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+          </div>
+        </div>
+      );
+    case "instagram_carousel":
+      return (
+        <div className="mx-auto my-6 max-w-sm overflow-hidden rounded-xl border border-zinc-200/70 dark:border-zinc-700/50 bg-white dark:bg-zinc-900">
+          <div className="flex items-center gap-2.5 px-3 py-2.5">
+            <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-20 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+              <div className="h-2 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+            </div>
+          </div>
+          <SkeletonShimmer />
+          <div className="flex justify-center gap-1 py-2">
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 animate-skeleton-breathe" />
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 animate-skeleton-breathe [animation-delay:150ms]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600 animate-skeleton-breathe [animation-delay:300ms]" />
+          </div>
+          <div className="flex items-center px-3 py-2.5">
+            <div className="flex gap-3">
+              <Heart className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+              <MessageCircle className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+              <Send className="h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+            </div>
+            <Bookmark className="ml-auto h-5 w-5 text-zinc-300 dark:text-zinc-700" />
+          </div>
+        </div>
+      );
+    case "instagram_reel":
+      return (
+        <div className="mx-auto my-6 max-w-xs">
+          <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+            <SkeletonShimmer916 />
+          </div>
+        </div>
+      );
+    case "tiktok_video":
+      return (
+        <div className="mx-auto my-6 max-w-xs">
+          <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+            <SkeletonShimmer916 />
+          </div>
+        </div>
+      );
+    case "youtube_shorts":
+      return (
+        <div className="mx-auto my-6 max-w-xs">
+          <div className="relative overflow-hidden rounded-[2rem] border-2 border-zinc-800 bg-black">
+            <SkeletonShimmer916 />
+          </div>
+        </div>
+      );
+    case "youtube_video":
+      return (
+        <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-xl border border-zinc-700/50 bg-black">
+          <SkeletonShimmerVideo />
+          <div className="flex items-center gap-3 bg-zinc-900 px-3 py-2">
+            <div className="h-4 w-4 rounded bg-zinc-700 animate-skeleton-breathe" />
+            <div className="flex-1 h-1 rounded-full bg-zinc-800">
+              <div className="h-full w-0 rounded-full bg-red-600/40 animate-skeleton-breathe" />
+            </div>
+            <div className="h-2.5 w-14 rounded-full bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+          </div>
+          <div className="bg-zinc-900 px-3 pb-3 space-y-1.5">
+            <div className="h-2.5 w-44 rounded-full bg-zinc-700 animate-skeleton-breathe" />
+            <div className="h-2 w-28 rounded-full bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+          </div>
+        </div>
+      );
+    default:
+      return (
+        <div className="my-6 overflow-hidden rounded-xl border bg-muted/30">
+          <SkeletonShimmer />
+        </div>
+      );
+  }
 }
 
 /** Animated dots for loading states */
@@ -228,7 +602,7 @@ function ThinkingSection({ lines }: { lines: string[] }) {
   if (lines.length === 0) return null;
 
   return (
-    <div className="mb-6 rounded-lg border border-border/50 bg-muted/30">
+    <div className="animate-fade-in-up mb-6 rounded-lg border border-border/50 bg-muted/30">
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
@@ -305,9 +679,12 @@ export function CampaignOutput({
       }
     });
 
+    eventSource.addEventListener("creator_started", () => {
+      setPhase("creating");
+    });
+
     eventSource.addEventListener("part", (e) => {
       const data = JSON.parse(e.data);
-      setPhase("creating");
 
       if (data.type === "text") {
         // Append partial text to the last text part, or create a new one
@@ -433,7 +810,7 @@ export function CampaignOutput({
 
         {/* Thinking phase indicator */}
         {phase === "thinking" && parts.length === 0 && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
+          <div className="animate-fade-in-up mb-6 flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3">
             <Brain className="h-4 w-4 animate-pulse text-primary" />
             <div className="flex-1">
               <p className="text-sm font-medium">
@@ -451,7 +828,7 @@ export function CampaignOutput({
 
         {/* Creating phase indicator (shown while streaming parts) */}
         {phase === "creating" && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <div className="animate-fade-in-up mb-6 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             <p className="text-sm font-medium">
               Generating content <PulsingDots />
@@ -468,15 +845,24 @@ export function CampaignOutput({
               }
               if (part.type === "image") {
                 return (
-                  <ImageBlock
-                    key={i}
-                    data={part.data}
-                    mimeType={part.mimeType}
-                  />
+                  <div key={i} className="animate-fade-in-up">
+                    <ImageBlock
+                      data={part.data}
+                      mimeType={part.mimeType}
+                      mediaType={campaign.mediaType}
+                    />
+                  </div>
                 );
               }
               return null;
             })}
+          </div>
+        )}
+
+        {/* Skeleton placeholder while creator is actively generating */}
+        {phase === "creating" && (
+          <div className="animate-fade-in-up">
+            <ImageSkeleton mediaType={campaign.mediaType} />
           </div>
         )}
 

@@ -6,6 +6,8 @@ import { google } from "googleapis";
 import { createOAuth2Client } from "@/lib/google-drive";
 import { chunkText } from "@/lib/chunker";
 import { generateEmbeddings } from "@/lib/embeddings";
+import { isLikelyLogo } from "@/lib/logo-detection";
+import type { SourceFileContentType } from "@wisestory/db";
 
 // Mime types we can extract text from
 const EXPORTABLE_TYPES: Record<string, string> = {
@@ -20,6 +22,34 @@ const DOWNLOADABLE_TEXT_TYPES = [
   "text/csv",
   "application/json",
 ];
+
+const MAX_LOGO_SIZE = 1_048_576; // 1 MB
+
+// Gemini vision supported image formats
+const SUPPORTED_IMAGE_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
+function classifyFile(
+  mimeType: string,
+  name: string,
+): SourceFileContentType {
+  if (
+    Object.keys(EXPORTABLE_TYPES).includes(mimeType) ||
+    DOWNLOADABLE_TEXT_TYPES.some((t) => mimeType.startsWith(t))
+  ) {
+    return "document";
+  }
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType.startsWith("image/")) {
+    return isLikelyLogo(name) ? "logo" : "photo";
+  }
+  return "other";
+}
 
 export async function POST(request: NextRequest) {
   const session = await auth.api.getSession({
@@ -151,6 +181,8 @@ async function processFiles(
 
   for (const file of allFiles) {
     try {
+      const contentType = classifyFile(file.mimeType, file.name);
+
       // Upsert SourceFile record
       const sourceFile = await prisma.sourceFile.upsert({
         where: {
@@ -168,11 +200,13 @@ async function processFiles(
           driveUrl: file.webViewLink ?? null,
           size: file.size ? parseInt(file.size) : null,
           status: "processing",
+          contentType,
         },
         update: {
           name: file.name,
           mimeType: file.mimeType,
           status: "processing",
+          contentType,
         },
       });
 
@@ -205,6 +239,29 @@ async function processFiles(
       } else if (file.mimeType?.startsWith("image/")) {
         // Images — store reference
         text = `[Image: ${file.name}]`;
+
+        // Download image data for logos (raster only, up to 1 MB)
+        if (
+          contentType === "logo" &&
+          SUPPORTED_IMAGE_TYPES.includes(file.mimeType) &&
+          (!file.size || parseInt(file.size) <= MAX_LOGO_SIZE)
+        ) {
+          try {
+            const imgRes = await drive.files.get(
+              { fileId: file.id, alt: "media" },
+              { responseType: "arraybuffer" },
+            );
+            const base64 = Buffer.from(imgRes.data as ArrayBuffer).toString(
+              "base64",
+            );
+            await prisma.sourceFile.update({
+              where: { id: sourceFile.id },
+              data: { imageData: base64 },
+            });
+          } catch (imgErr) {
+            console.error(`Failed to download logo ${file.name}:`, imgErr);
+          }
+        }
       }
 
       if (!text || text.trim().length === 0) {

@@ -171,7 +171,7 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {MEDIA_TYPES.map((type) => {
+            {MEDIA_TYPES.filter((t) => t.value !== "multi_platform_campaign").map((type) => {
               const Icon = type.icon;
               const isSelected = selectedType === type.value;
 
@@ -294,7 +294,7 @@ export function CampaignBuilder({ workspaceSlug, project }: Props) {
         {/* Generate button */}
         <Button
           size="lg"
-          className="w-full gap-2"
+          className="h-11 w-full gap-2 text-[15px] font-semibold disabled:bg-muted disabled:text-muted-foreground"
           disabled={!canGenerate}
           onClick={handleGenerate}
         >

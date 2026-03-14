@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -35,10 +35,14 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Zap className="h-4 w-4 text-primary-foreground" />
-            </div>
+          <Link href="/" className="flex items-center gap-1.5">
+            <Image
+              src="/logo-icon.svg"
+              alt="WiseStory"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
             <span className="text-lg font-semibold tracking-tight">
               WiseStory
             </span>
@@ -60,8 +64,7 @@ export default function LoginPage() {
             )}
             <Button
               variant="outline"
-              className="w-full gap-2 border-border bg-white text-foreground hover:bg-muted"
-              size="lg"
+              className="h-10 w-full gap-2.5 border-border bg-white text-foreground hover:bg-muted"
               onClick={handleGoogleSignIn}
               disabled={loading}
             >

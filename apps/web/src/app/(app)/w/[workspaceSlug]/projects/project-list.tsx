@@ -57,8 +57,7 @@ export function ProjectList({ workspaceSlug, projects }: ProjectListProps) {
             </p>
           </div>
           <Button
-            size="sm"
-            className="gap-1.5"
+            className="gap-1.5 px-4"
             onClick={() => setDialogOpen(true)}
           >
             <Plus className="h-3.5 w-3.5" />

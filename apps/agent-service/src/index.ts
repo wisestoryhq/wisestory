@@ -40,11 +40,33 @@ async function buildRunner(body: {
     notes: project.notes ?? undefined,
   };
 
+  // Gemini vision supported image formats
+  const SUPPORTED_IMAGE_TYPES = [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ];
+
+  // Fetch brand logos (up to 3) to pass as visual context
+  const logos = await prisma.sourceFile.findMany({
+    where: {
+      workspaceId,
+      contentType: "logo",
+      imageData: { not: null },
+      mimeType: { in: SUPPORTED_IMAGE_TYPES },
+    },
+    select: { name: true, mimeType: true, imageData: true },
+    take: 3,
+  });
+
   const agent = createCreativeDirectorAgent({
     workspaceId,
     mediaType,
     project: projectContext,
     userPrompt: prompt,
+    hasLogos: logos.length > 0,
   });
 
   const sessionService = new InMemorySessionService();
@@ -62,7 +84,21 @@ async function buildRunner(body: {
   // Wrap prompt with instructions to prevent models from asking questions
   const wrappedPrompt = `[AUTOMATED REQUEST — DO NOT ASK QUESTIONS]\n\n${prompt}\n\n[INSTRUCTIONS: Call retrieve_knowledge 3+ times, then write the actual content with [IMAGE: ...] tags. Do NOT ask questions. Do NOT write a creative brief. Start with the content immediately.]`;
 
-  return { runner, session, prompt: wrappedPrompt };
+  // Build multimodal parts: logos first (if any), then the text prompt
+  const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+  if (logos.length > 0) {
+    parts.push({
+      text: `[BRAND LOGOS: ${logos.length} attached. Use as brand identity reference.]`,
+    });
+    for (const logo of logos) {
+      parts.push({
+        inlineData: { mimeType: logo.mimeType, data: logo.imageData! },
+      });
+    }
+  }
+  parts.push({ text: wrappedPrompt });
+
+  return { runner, session, prompt: wrappedPrompt, parts };
 }
 
 /**
@@ -92,7 +128,7 @@ app.post("/generate/stream", async (c) => {
 
   return streamSSE(c, async (stream) => {
     try {
-      const { runner, session } = await buildRunner({
+      const { runner, session, parts: messageParts } = await buildRunner({
         workspaceId,
         projectId,
         mediaType,
@@ -114,13 +150,15 @@ app.post("/generate/stream", async (c) => {
       // Used to detect and skip the final consolidated (non-partial) event that
       // repeats all the accumulated text.
       let totalPartialChars = 0;
+      // Whether we've already emitted the creator_started signal
+      let creatorStartedEmitted = false;
 
       const eventGenerator = runner.runAsync({
         userId: "user",
         sessionId: session.id,
         newMessage: {
           role: "user",
-          parts: [{ text: prompt }],
+          parts: messageParts,
         },
         runConfig: {
           streamingMode: StreamingMode.SSE,
@@ -131,8 +169,19 @@ app.post("/generate/stream", async (c) => {
         const isPartial = event.partial === true;
         const isTurnComplete = event.turnComplete === true;
 
+        const partsSummary = event.content?.parts
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ? event.content.parts.map((p: any) => {
+              if ("text" in p) return `text(${(p.text as string)?.length ?? 0})`;
+              if ("inlineData" in p) return `image`;
+              if ("functionCall" in p) return `fnCall`;
+              if ("functionResponse" in p) return `fnResp`;
+              return `unknown(${Object.keys(p).join(",")})`;
+            })
+          : "none";
+
         console.log(
-          `[Event] author=${event.author} partial=${isPartial} turnComplete=${isTurnComplete}`
+          `[Event] author=${event.author} partial=${isPartial} turnComplete=${isTurnComplete} parts=[${partsSummary}]`
         );
 
         if (!event.content?.parts) continue;
@@ -174,6 +223,14 @@ app.post("/generate/stream", async (c) => {
 
           // --- Creator events (actual content) ---
           if (event.author === "creator") {
+            // Signal that the creator agent has started (images will follow)
+            if (!creatorStartedEmitted) {
+              creatorStartedEmitted = true;
+              await stream.writeSSE({
+                event: "creator_started",
+                data: "{}",
+              });
+            }
             if ("text" in part && part.text) {
               if (isPartial) {
                 // Stream each partial text chunk for progressive display
@@ -250,6 +307,10 @@ app.post("/generate/stream", async (c) => {
         finalParts.push({ type: "text", content: creatorTextBuffer });
       }
 
+      console.log(
+        `[generate/stream] Pipeline complete: ${finalParts.length} final parts, ${totalPartialChars} partial chars`
+      );
+
       // Save results to DB
       if (finalParts.length > 0) {
         await prisma.campaignOutput.create({
@@ -303,7 +364,7 @@ app.post("/generate", async (c) => {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
-  const { runner, session } = await buildRunner({
+  const { runner, session, parts: messageParts } = await buildRunner({
     workspaceId,
     projectId,
     mediaType,
@@ -321,7 +382,7 @@ app.post("/generate", async (c) => {
     sessionId: session.id,
     newMessage: {
       role: "user",
-      parts: [{ text: prompt }],
+      parts: messageParts,
     },
   });
 

@@ -9,8 +9,8 @@ import {
   createWorkspace,
   type CreateWorkspaceInput,
 } from "@/app/actions/workspace";
+import Image from "next/image";
 import {
-  Zap,
   Newspaper,
   Shirt,
   CookingPot,
@@ -71,9 +71,13 @@ export default function OnboardingPage() {
         <div className="w-full max-w-lg">
           {/* Header */}
           <div className="mb-10 flex flex-col items-center text-center">
-            <div className="mb-6 flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Zap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <Image
+              src="/logo-icon.svg"
+              alt="WiseStory"
+              width={40}
+              height={40}
+              className="mb-6 h-10 w-10"
+            />
             <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
               Step {step + 1} of 2
             </p>

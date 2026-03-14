@@ -7,8 +7,8 @@ import { signOut } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import Image from "next/image";
 import {
-  Zap,
   LayoutDashboard,
   FolderKanban,
   HardDrive,
@@ -52,9 +52,13 @@ export function WorkspaceSidebar({ workspace, user }: WorkspaceSidebarProps) {
     <div className="flex h-full flex-col">
       {/* Workspace header */}
       <div className="flex h-14 items-center gap-2.5 px-4">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary">
-          <Zap className="h-3.5 w-3.5 text-primary-foreground" />
-        </div>
+        <Image
+          src="/logo-icon.svg"
+          alt="WiseStory"
+          width={28}
+          height={28}
+          className="h-7 w-7 shrink-0"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight">
             {workspace.name}

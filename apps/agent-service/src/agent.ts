@@ -1,5 +1,5 @@
 import { LlmAgent, SequentialAgent } from "@google/adk";
-import { getMediaTypeInstruction } from "@wisestory/prompts";
+import { getMediaTypeInstruction, MEDIA_TYPE_ASPECT_RATIOS, MEDIA_TYPE_ASPECT_LABELS } from "@wisestory/prompts";
 import type { MediaType, ProjectContext } from "@wisestory/prompts";
 import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 
@@ -21,13 +21,17 @@ export function createCreativeDirectorAgent({
   mediaType,
   project,
   userPrompt,
+  hasLogos = false,
 }: {
   workspaceId: string;
   mediaType: MediaType;
   project: ProjectContext;
   userPrompt: string;
+  hasLogos?: boolean;
 }) {
   const mediaTypeInstruction = getMediaTypeInstruction(mediaType);
+  const aspectRatio = MEDIA_TYPE_ASPECT_RATIOS[mediaType];
+  const aspectLabel = MEDIA_TYPE_ASPECT_LABELS[mediaType];
   const projectLines = [`Project: ${project.projectName}`];
   if (project.brief) projectLines.push(`Brief: ${project.brief}`);
   if (project.targetAudience)
@@ -35,6 +39,14 @@ export function createCreativeDirectorAgent({
   if (project.platform) projectLines.push(`Platform: ${project.platform}`);
   if (project.notes) projectLines.push(`Notes: ${project.notes}`);
 
+
+  const logoInstructionPlanner = hasLogos
+    ? `\n\n## Brand Logos (IMPORTANT)\nThe brand's actual logo images are attached to this message. In every [IMAGE: ...] description, explicitly instruct the image model to reproduce the EXACT attached logo — same shape, same icon, same typography. Do NOT invent a new logo. Describe the attached logo precisely (shape, colors, text) so the image model can replicate it faithfully.`
+    : "";
+
+  const logoInstructionCreator = hasLogos
+    ? `\n\n## Brand Logos (IMPORTANT)\nThe brand's actual logo images are attached to this conversation. You MUST reproduce the EXACT logo from the attached images in your generated visuals — same icon, same typography, same proportions. Do NOT create a new or different logo. Study the attached logo carefully and replicate it precisely in every generated image that includes branding.`
+    : "";
 
   const retrieveKnowledge = createRetrieveKnowledgeTool(workspaceId);
 
@@ -55,6 +67,8 @@ RULES:
 - Write the ACTUAL post content — not a brief, not options, not a strategy.
 - Only ${mediaType.replace(/_/g, " ")} — no other formats.
 - You MUST include [IMAGE: description] tags (not markdown images like ![]).
+- Every [IMAGE:] description MUST specify the aspect ratio: ${aspectLabel}.
+- Every [IMAGE:] description MUST ensure high contrast and readability — light text/logos on dark backgrounds, dark text/logos on light backgrounds. Never place dark elements on dark backgrounds.
 - Start with the content immediately. No preamble.
 
 ${mediaTypeInstruction}
@@ -71,9 +85,9 @@ Happy Birthday to our brilliant team member! 🎉
 
 Your creativity lights up every project. Here's to another year of amazing work!
 
-[IMAGE: A celebration graphic on deep indigo background with geometric confetti in emerald and amber. Bold white sans-serif text "HAPPY BIRTHDAY" centered. Clean, modern, editorial style.]
+[IMAGE: 1:1 square format. A celebration graphic on deep indigo background with geometric confetti in emerald and amber. Bold white sans-serif text "HAPPY BIRTHDAY" centered. High contrast — light text on dark background. Clean, modern, editorial style.]
 
-#HappyBirthday #TeamCelebration #OnBrand`,
+#HappyBirthday #TeamCelebration #OnBrand${logoInstructionPlanner}`,
     tools: [retrieveKnowledge],
     outputKey: "creative_brief",
   });
@@ -100,10 +114,15 @@ RULES:
 - NEVER say things like "great plan!" or "sounds good!" or ask questions.
 - You MUST generate at least one real image. Text-only output = FAILURE.
 - Each image = one standalone full-frame visual. No grids or collages.
+- Every generated image MUST be ${aspectLabel} aspect ratio. This is critical for the target platform.
+- Every generated image MUST have high contrast and readability — use light text/logos on dark backgrounds, dark text/logos on light backgrounds. Never place dark elements on dark backgrounds.
 - Output pattern: text, then image, then text, then image.
-- Start generating immediately. No preamble.`,
+- Start generating immediately. No preamble.${logoInstructionCreator}`,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio: aspectRatio,
+      },
     },
   });
 
