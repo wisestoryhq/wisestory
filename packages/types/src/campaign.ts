@@ -2,7 +2,8 @@ import type { MediaType } from "./media-type";
 
 export const CAMPAIGN_STATUSES = [
   "draft",
-  "generating",
+  "briefing",
+  "generating_doc",
   "completed",
   "failed",
 ] as const;
@@ -23,7 +24,7 @@ export interface Campaign {
 /** A single part of an interleaved Gemini response */
 export type OutputPart =
   | { type: "text"; content: string }
-  | { type: "image"; url: string; mimeType: string; alt?: string };
+  | { type: "image"; url?: string; data?: string; mimeType: string; alt?: string };
 
 export interface CampaignOutput {
   id: string;

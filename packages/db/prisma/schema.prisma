@@ -59,7 +59,7 @@ enum SourceFileStatus {
 enum CampaignStatus {
   draft
   briefing
-  generating
+  generating_doc
   completed
   failed
 }
@@ -277,6 +277,7 @@ model Campaign {
   outputs              CampaignOutput[]
   messages             CampaignMessage[]
   generationSourceRefs GenerationSourceRef[]
+  briefingNodes        BriefingNode[]
 
   @@index([workspaceId])
   @@map("campaigns")
@@ -328,4 +329,42 @@ model GenerationSourceRef {
   @@unique([campaignId, knowledgeChunkId])
   @@index([campaignId])
   @@map("generation_source_refs")
+}
+
+// ─── Briefing Node (Knowledge Graph) ─────────────────────────────
+
+model BriefingNode {
+  id            String   @id @default(cuid())
+  nodeType      String   // "decision", "concept", "visual_direction", "copy_direction", "liked_image", "brand_element", "rejected_option"
+  title         String
+  content       String
+  imageData     String?  // base64
+  imageMimeType String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  outgoingEdges BriefingEdge[] @relation("source")
+  incomingEdges BriefingEdge[] @relation("target")
+
+  @@index([campaignId])
+  @@map("briefing_nodes")
+}
+
+// ─── Briefing Edge (Knowledge Graph) ─────────────────────────────
+
+model BriefingEdge {
+  id               String       @id @default(cuid())
+  relationshipType String       // "leads_to", "refines", "replaces", "supports", "rejected_for"
+  weight           Float        @default(1.0)
+
+  sourceId String
+  source   BriefingNode @relation("source", fields: [sourceId], references: [id], onDelete: Cascade)
+  targetId String
+  target   BriefingNode @relation("target", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, targetId])
+  @@map("briefing_edges")
 }

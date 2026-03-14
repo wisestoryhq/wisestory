@@ -16,7 +16,8 @@ export const outputPartSchema = z.discriminatedUnion("type", [
   }),
   z.object({
     type: z.literal("image"),
-    url: z.string().url(),
+    url: z.string().url().optional(),
+    data: z.string().optional(),
     mimeType: z.string(),
     alt: z.string().optional(),
   }),
@@ -38,7 +39,7 @@ export const generationResponseSchema = z.object({
   campaign: z.object({
     id: z.string(),
     mediaType: z.enum(MEDIA_TYPES),
-    status: z.enum(["draft", "generating", "completed", "failed"]),
+    status: z.enum(["draft", "briefing", "generating_doc", "completed", "failed"]),
   }),
   output: campaignOutputSchema,
   sourceRefs: z.array(
