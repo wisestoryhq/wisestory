@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
-import { createBriefingChatAgent } from "./agent.js";
+import { createBriefingChatAgent, createBriefingDocumentAgent } from "./agent.js";
 import { retrieveKnowledge } from "./tools/retrieve-knowledge.js";
 import { extractBriefingDecisions } from "./tools/extract-decisions.js";
 import { prisma } from "./db.js";
@@ -215,6 +215,270 @@ app.post("/chat/stream", async (c) => {
       await stream.writeSSE({
         event: "error",
         data: JSON.stringify({ message: err instanceof Error ? err.message : "Chat failed" }),
+      });
+    }
+  });
+});
+
+/**
+ * POST /briefing/generate
+ * SSE endpoint that generates a briefing document from the knowledge graph.
+ * Reads BriefingNode/BriefingEdge for the campaign, builds a structured summary,
+ * and streams a multimodal document (text + images).
+ *
+ * Events: thinking, part, done, error
+ */
+app.post("/briefing/generate", async (c) => {
+  const body = await c.req.json<{
+    campaignId: string;
+    workspaceId: string;
+    mediaType: MediaType;
+  }>();
+
+  const { campaignId, workspaceId, mediaType } = body;
+
+  if (!campaignId || !workspaceId || !mediaType) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+
+  return streamSSE(c, async (stream) => {
+    try {
+      await stream.writeSSE({
+        event: "thinking",
+        data: JSON.stringify({ text: "Building briefing document..." }),
+      });
+
+      // Load knowledge graph nodes
+      const nodes = await prisma.briefingNode.findMany({
+        where: { campaignId },
+        include: {
+          outgoingEdges: { include: { target: { select: { title: true } } } },
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      // Build structured summary from graph
+      let graphSummary = "";
+
+      if (nodes.length > 0) {
+        const grouped: Record<string, typeof nodes> = {};
+        for (const node of nodes) {
+          const key = node.nodeType;
+          if (!grouped[key]) grouped[key] = [];
+          grouped[key].push(node);
+        }
+
+        const sectionLabels: Record<string, string> = {
+          decision: "Decisions Made",
+          concept: "Creative Concepts",
+          visual_direction: "Visual Direction",
+          copy_direction: "Copy Direction",
+          liked_image: "Approved Images",
+          brand_element: "Brand Elements",
+          rejected_option: "Rejected Options",
+        };
+
+        for (const [nodeType, sectionNodes] of Object.entries(grouped)) {
+          if (nodeType === "rejected_option") continue; // Skip rejected in summary
+          const label = sectionLabels[nodeType] ?? nodeType;
+          graphSummary += `\n### ${label}\n`;
+          for (const node of sectionNodes) {
+            graphSummary += `- **${node.title}**: ${node.content}\n`;
+            for (const edge of node.outgoingEdges) {
+              graphSummary += `  → ${edge.relationshipType} "${edge.target.title}"\n`;
+            }
+          }
+        }
+      }
+
+      // Fallback: if graph is empty, use conversation messages
+      if (!graphSummary.trim()) {
+        await stream.writeSSE({
+          event: "thinking",
+          data: JSON.stringify({ text: "No graph data found, using conversation history..." }),
+        });
+
+        const messages = await prisma.campaignMessage.findMany({
+          where: { campaignId },
+          orderBy: { createdAt: "asc" },
+        });
+
+        const campaign = await prisma.campaign.findUnique({
+          where: { id: campaignId },
+          select: { briefingSummary: true, prompt: true },
+        });
+
+        graphSummary = campaign?.briefingSummary || "";
+        if (!graphSummary && messages.length > 0) {
+          graphSummary = messages
+            .map((m: { role: string; content: string }) =>
+              `${m.role === "user" ? "Client" : "Creative Director"}: ${m.content}`
+            )
+            .join("\n\n");
+        }
+        if (!graphSummary) {
+          graphSummary = campaign?.prompt || "No briefing context available.";
+        }
+      }
+
+      // Collect liked images from graph nodes
+      const likedImages: Array<{ data: string; mimeType: string }> = [];
+      for (const node of nodes) {
+        if (node.nodeType === "liked_image" && node.imageData && node.imageMimeType) {
+          likedImages.push({ data: node.imageData, mimeType: node.imageMimeType });
+        }
+      }
+
+      // Optionally fetch brand knowledge
+      let brandContext = "";
+      try {
+        const brandResults = await retrieveKnowledge(workspaceId, "brand identity and guidelines", 5);
+        if (brandResults.length > 0) {
+          brandContext = "\n### Brand Context\n" + brandResults.map(r => `- [${r.source}] ${r.content}`).join("\n");
+          graphSummary += brandContext;
+        }
+      } catch {
+        // Non-critical
+      }
+
+      await stream.writeSSE({
+        event: "thinking",
+        data: JSON.stringify({ text: "Generating document..." }),
+      });
+
+      // Create agent
+      const agent = createBriefingDocumentAgent({ graphSummary, mediaType });
+      const sessionService = new InMemorySessionService();
+      const runner = new Runner({ appName: "wisestory", agent, sessionService });
+      const session = await sessionService.createSession({ appName: "wisestory", userId: "user" });
+
+      // Build message parts
+      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+      // Attach liked images as visual references
+      if (likedImages.length > 0) {
+        parts.push({ text: `[APPROVED IMAGES: ${likedImages.length} images the client liked during the briefing. Reference these in the document.]` });
+        for (const img of likedImages) {
+          parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
+        }
+      }
+
+      // Attach brand logos
+      const logos = await prisma.sourceFile.findMany({
+        where: {
+          workspaceId,
+          contentType: "logo",
+          imageData: { not: null },
+          mimeType: { in: ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"] },
+        },
+        select: { mimeType: true, imageData: true },
+        take: 3,
+      });
+      if (logos.length > 0) {
+        parts.push({ text: `[BRAND LOGOS: Reference these for the brand elements section.]` });
+        for (const logo of logos) {
+          parts.push({ inlineData: { mimeType: logo.mimeType, data: logo.imageData! } });
+        }
+      }
+
+      parts.push({ text: "Generate the briefing document now based on the knowledge graph summary in your instructions." });
+
+      // Stream response
+      let textBuffer = "";
+      let totalPartialChars = 0;
+      const finalParts: Array<
+        | { type: "text"; content: string }
+        | { type: "image"; data: string; mimeType: string }
+      > = [];
+
+      const eventGenerator = runner.runAsync({
+        userId: "user",
+        sessionId: session.id,
+        newMessage: { role: "user", parts },
+        runConfig: { streamingMode: StreamingMode.SSE },
+      });
+
+      for await (const event of eventGenerator) {
+        const isPartial = event.partial === true;
+
+        if (!event.content?.parts) continue;
+
+        for (const part of event.content.parts) {
+          if ("text" in part && part.text) {
+            if (isPartial) {
+              await stream.writeSSE({
+                event: "part",
+                data: JSON.stringify({ type: "text", content: part.text, partial: true }),
+              });
+              textBuffer += part.text;
+              totalPartialChars += part.text.length;
+            } else if (totalPartialChars > 0) {
+              // Skip consolidated event
+            } else {
+              await stream.writeSSE({
+                event: "part",
+                data: JSON.stringify({ type: "text", content: part.text, partial: false }),
+              });
+              textBuffer += part.text;
+            }
+          }
+
+          if ("inlineData" in part && part.inlineData) {
+            // Flush text before image
+            if (textBuffer) {
+              finalParts.push({ type: "text", content: textBuffer });
+              textBuffer = "";
+            }
+
+            const img = {
+              type: "image" as const,
+              data: part.inlineData.data ?? "",
+              mimeType: part.inlineData.mimeType ?? "image/png",
+            };
+            finalParts.push(img);
+            await stream.writeSSE({
+              event: "part",
+              data: JSON.stringify(img),
+            });
+          }
+        }
+      }
+
+      // Flush remaining text
+      if (textBuffer) {
+        finalParts.push({ type: "text", content: textBuffer });
+      }
+
+      // Save document to CampaignOutput
+      if (finalParts.length > 0) {
+        await prisma.campaignOutput.create({
+          data: {
+            campaignId,
+            parts: finalParts,
+          },
+        });
+      }
+
+      // Update campaign status to completed
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { status: "completed" },
+      });
+
+      console.log(`[briefing/generate] Document complete: ${finalParts.length} parts for campaign ${campaignId}`);
+      await stream.writeSSE({ event: "done", data: "{}" });
+    } catch (err) {
+      console.error("[briefing/generate] Error:", err);
+
+      // Mark as failed
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { status: "failed" },
+      }).catch(() => {});
+
+      await stream.writeSSE({
+        event: "error",
+        data: JSON.stringify({ message: err instanceof Error ? err.message : "Briefing document generation failed" }),
       });
     }
   });
