@@ -474,9 +474,11 @@ export default function Home() {
               WiseStory
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Built for the Gemini Live Agent Challenge
-          </p>
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <Link href="/terms" className="hover:text-foreground">Terms</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            <span>Built for the Gemini Live Agent Challenge</span>
+          </div>
         </div>
       </footer>
     </div>
