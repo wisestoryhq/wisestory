@@ -36,6 +36,8 @@ export async function extractBriefingDecisions(
   try {
     if (!assistantText.trim()) return;
 
+    console.log(`[extract-decisions] Starting extraction for campaign ${campaignId} (${assistantText.length} chars, ${assistantImages.length} images)`);
+
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `${DECISION_EXTRACTION_INSTRUCTION}
@@ -52,6 +54,7 @@ Extract decisions and concepts from the assistant response above. Output JSON on
 
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
+    console.log(`[extract-decisions] Gemini response (${responseText.length} chars): ${responseText.substring(0, 200)}...`);
 
     // Parse JSON from response (may be wrapped in ```json blocks)
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -60,7 +63,13 @@ Extract decisions and concepts from the assistant response above. Output JSON on
       return;
     }
 
-    const extraction: ExtractionResult = JSON.parse(jsonMatch[0]);
+    let extraction: ExtractionResult;
+    try {
+      extraction = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+      console.error("[extract-decisions] JSON parse failed:", parseErr, "Raw:", jsonMatch[0].substring(0, 300));
+      return;
+    }
 
     if (!extraction.nodes || extraction.nodes.length === 0) {
       console.log("[extract-decisions] No nodes extracted");

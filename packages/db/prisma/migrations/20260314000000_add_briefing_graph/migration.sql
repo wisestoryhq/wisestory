@@ -39,7 +39,10 @@ ALTER TABLE "source_connections" ADD COLUMN IF NOT EXISTS "folderNames" TEXT[] D
 ALTER TABLE "source_files" ADD COLUMN IF NOT EXISTS "contentType" "SourceFileContentType" NOT NULL DEFAULT 'other';
 ALTER TABLE "source_files" ADD COLUMN IF NOT EXISTS "imageData" TEXT;
 
--- DropTable: projects (if exists)
+-- Drop FK from campaigns to projects, drop projectId column, then drop projects table
+ALTER TABLE "campaigns" DROP CONSTRAINT IF EXISTS "campaigns_projectId_fkey";
+ALTER TABLE "campaigns" DROP COLUMN IF EXISTS "projectId";
+DROP INDEX IF EXISTS "campaigns_projectId_idx";
 DROP TABLE IF EXISTS "projects";
 
 -- CreateTable: campaign_messages

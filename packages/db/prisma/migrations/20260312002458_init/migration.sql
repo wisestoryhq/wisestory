@@ -1,3 +1,6 @@
+-- Enable pgvector extension (required for embedding columns)
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- CreateEnum
 CREATE TYPE "WorkspaceMemberRole" AS ENUM ('owner', 'admin', 'member');
 
