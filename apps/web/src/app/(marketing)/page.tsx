@@ -14,10 +14,6 @@ import {
   Table2,
   Presentation,
   Palette,
-  Type,
-  Instagram,
-  Youtube,
-  Film,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -115,11 +111,9 @@ function HeroIllustration() {
         <div className="absolute -inset-8 animate-pulse rounded-full bg-[#f6b900]/[0.06] blur-xl" />
         <div className="absolute -inset-4 animate-pulse rounded-full bg-[#f6b900]/[0.08] blur-md" style={{ animationDelay: "0.5s" }} />
 
-        <div className="relative flex h-24 w-24 flex-col items-center justify-center rounded-2xl border-2 border-[#f6b900]/40 bg-card shadow-lg shadow-[#f6b900]/10 sm:h-28 sm:w-28">
-          <Sparkles className="h-7 w-7 text-[#f6b900] sm:h-8 sm:w-8" />
-          <span className="mt-1.5 text-[10px] font-bold tracking-wider text-foreground/70">
-            GEMINI
-          </span>
+        <div className="relative flex h-24 w-24 flex-col items-center justify-center gap-2 rounded-2xl border-2 border-[#f6b900]/40 bg-card shadow-lg shadow-[#f6b900]/10 sm:h-28 sm:w-28">
+          <Image src="/gemini-icon.png" alt="Gemini" width={128} height={128} className="h-7 w-7 sm:h-8 sm:w-8" />
+          <Image src="/gemini-label.png" alt="Gemini" width={400} height={116} className="h-[14px] w-auto" />
         </div>
       </div>
 
@@ -127,24 +121,25 @@ function HeroIllustration() {
       <div className="absolute right-[2%] top-1/2 flex -translate-y-1/2 flex-col gap-3 sm:right-[4%]">
         {[
           {
-            icon: Instagram,
+            img: "/icons/social/instagram.svg",
             label: "Instagram Post",
             sub: "Text + image",
             delay: "1.2s",
           },
           {
-            icon: Film,
+            img: "/icons/social/tiktok.svg",
             label: "TikTok Story",
             sub: "Script + visuals",
             delay: "1.5s",
           },
           {
-            icon: Youtube,
+            img: "/icons/social/youtube.svg",
             label: "YouTube Short",
             sub: "Storyboard",
             delay: "1.8s",
           },
           {
+            img: null,
             icon: Palette,
             label: "Brand Content",
             sub: "On-brand output",
@@ -160,7 +155,11 @@ function HeroIllustration() {
             }}
           >
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f6b900]/10">
-              <item.icon className="h-3.5 w-3.5 text-[#f6b900]" />
+              {item.img ? (
+                <Image src={item.img} alt={item.label} width={14} height={14} className="h-3.5 w-3.5" />
+              ) : (
+                item.icon && <item.icon className="h-3.5 w-3.5 text-[#f6b900]" />
+              )}
             </div>
             <div className="min-w-0">
               <span className="block text-xs font-medium text-foreground/80 whitespace-nowrap">
