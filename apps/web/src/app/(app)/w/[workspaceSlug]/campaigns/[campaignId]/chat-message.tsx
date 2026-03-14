@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { User, Sparkles, X } from "lucide-react";
+import { User, Sparkles, X, ThumbsUp, ThumbsDown } from "lucide-react";
 
 type TextPart = { type: "text"; content: string };
 type ImagePart = { type: "image"; data: string; mimeType: string };
@@ -17,6 +17,9 @@ export type Message = {
 
 type Props = {
   message: Message;
+  imageRatings?: Map<string, "liked" | "disliked">;
+  onRateImage?: (messageId: string, partIndex: number, rating: "like" | "dislike") => void;
+  isStreaming?: boolean;
 };
 
 function ImageLightbox({
@@ -62,7 +65,7 @@ function ImageLightbox({
   );
 }
 
-export function ChatMessage({ message }: Props) {
+export function ChatMessage({ message, imageRatings, onRateImage, isStreaming }: Props) {
   const isUser = message.role === "user";
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
@@ -113,19 +116,54 @@ export function ChatMessage({ message }: Props) {
             }
             if (part.type === "image") {
               const src = `data:${part.mimeType};base64,${part.data}`;
+              const ratingKey = `${message.id}:${i}`;
+              const rating = imageRatings?.get(ratingKey);
+              const showRatingButtons = !isUser && !isStreaming && onRateImage;
               return (
-                <div key={i} className="flex justify-center">
-                  <button
-                    onClick={() => setLightboxSrc(src)}
-                    className="overflow-hidden rounded-xl border bg-muted/30 transition-transform hover:scale-[1.02] cursor-zoom-in"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={src}
-                      alt={`Generated concept ${i + 1}`}
-                      className="w-full object-cover"
-                    />
-                  </button>
+                <div key={i} className="space-y-1.5">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={() => setLightboxSrc(src)}
+                      className={cn(
+                        "overflow-hidden rounded-xl border bg-muted/30 transition-all hover:scale-[1.02] cursor-zoom-in",
+                        rating === "liked" && "border-2 border-green-500",
+                        rating === "disliked" && "opacity-50"
+                      )}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt={`Generated concept ${i + 1}`}
+                        className="w-full object-cover"
+                      />
+                    </button>
+                  </div>
+                  {showRatingButtons && (
+                    <div className="flex justify-center gap-1">
+                      <button
+                        onClick={() => onRateImage(message.id, i, "like")}
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                          rating === "liked"
+                            ? "bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <ThumbsUp className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onRateImage(message.id, i, "dislike")}
+                        className={cn(
+                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                          rating === "disliked"
+                            ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        <ThumbsDown className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             }

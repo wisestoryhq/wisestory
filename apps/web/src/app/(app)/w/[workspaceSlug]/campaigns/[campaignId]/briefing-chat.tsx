@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { generateBriefingDoc } from "@/app/actions/campaign";
 import { ChatMessage } from "./chat-message";
@@ -55,27 +56,48 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showGraph, setShowGraph] = useState(false);
+  const [imageRatings, setImageRatings] = useState<Map<string, "liked" | "disliked">>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const isStreamingRef = useRef(false);
-  const hasSentInitialRef = useRef(false);
 
   const base = `/w/${workspaceSlug}`;
+
+  // Load existing ratings on mount
+  useEffect(() => {
+    fetch(`/api/campaigns/${campaign.id}/rate-image`)
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data?.ratings) return;
+        const map = new Map<string, "liked" | "disliked">();
+        for (const r of data.ratings) {
+          map.set(`${r.messageId}:${r.partIndex}`, r.rating === "like" ? "liked" : "disliked");
+        }
+        setImageRatings(map);
+      })
+      .catch(() => {});
+  }, [campaign.id]);
+
+  const hasImages = messages.some(
+    (m) => m.role === "assistant" && m.parts.some((p) => p.type === "image")
+  );
+  const hasAnyRating = imageRatings.size > 0;
+  const needsRating = hasImages && !hasAnyRating;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinkingText]);
 
   useEffect(() => {
-    if (
-      !hasSentInitialRef.current &&
-      initialMessages.length === 0 &&
-      campaign.prompt
-    ) {
-      hasSentInitialRef.current = true;
+    if (initialMessages.length === 0 && campaign.prompt) {
       sendMessage(campaign.prompt);
     }
+    return () => {
+      // Abort in-flight request on cleanup (strict mode re-mount)
+      abortRef.current?.abort();
+      isStreamingRef.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -207,6 +229,38 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     }
   }, [campaign.id]);
 
+  const handleRateImage = useCallback(
+    (messageId: string, partIndex: number, rating: "like" | "dislike") => {
+      const key = `${messageId}:${partIndex}`;
+      // Optimistic update
+      setImageRatings((prev) => {
+        const next = new Map(prev);
+        next.set(key, rating === "like" ? "liked" : "disliked");
+        return next;
+      });
+
+      // Find image data from message parts
+      const msg = messages.find((m) => m.id === messageId);
+      const part = msg?.parts[partIndex];
+      const imageData = part?.type === "image" ? part.data : undefined;
+      const imageMimeType = part?.type === "image" ? part.mimeType : undefined;
+
+      fetch(`/api/campaigns/${campaign.id}/rate-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, partIndex, rating, imageData, imageMimeType }),
+      }).catch(() => {
+        // Revert on failure
+        setImageRatings((prev) => {
+          const next = new Map(prev);
+          next.delete(key);
+          return next;
+        });
+      });
+    },
+    [campaign.id, messages]
+  );
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim()) return;
@@ -269,7 +323,13 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-2xl space-y-6">
           {messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage
+              key={message.id}
+              message={message}
+              imageRatings={imageRatings}
+              onRateImage={handleRateImage}
+              isStreaming={isStreaming}
+            />
           ))}
 
           {thinkingText && (
@@ -347,19 +407,30 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                 <Network className="h-3.5 w-3.5" />
                 View Graph
               </button>
-              <Button
-                size="sm"
-                onClick={handleGenerateBriefing}
-                disabled={isApproving}
-                className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
-              >
-                Generate Briefing
-                {isApproving ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <ArrowRight className="h-3.5 w-3.5" />
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      onClick={handleGenerateBriefing}
+                      disabled={isApproving || needsRating}
+                      className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
+                    >
+                      Generate Briefing
+                      {isApproving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  }
+                />
+                {needsRating && (
+                  <TooltipContent>
+                    Rate at least one image before generating
+                  </TooltipContent>
                 )}
-              </Button>
+              </Tooltip>
             </div>
           )}
         </div>
