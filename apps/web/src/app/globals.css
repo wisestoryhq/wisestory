@@ -136,6 +136,65 @@
   }
 }
 
+/* Briefing document prose styles */
+.briefing-prose {
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+.briefing-prose h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.briefing-prose h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.briefing-prose h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+.briefing-prose p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.briefing-prose ul,
+.briefing-prose ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.25rem;
+}
+.briefing-prose li {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
+}
+.briefing-prose hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-color: var(--border);
+  opacity: 0.5;
+}
+.briefing-prose strong {
+  font-weight: 600;
+}
+.briefing-prose img {
+  border-radius: 0.5rem;
+}
+.briefing-prose > :first-child {
+  margin-top: 0;
+}
+
 /* Smooth entrance for streamed content */
 @keyframes fade-in-up {
   0% {

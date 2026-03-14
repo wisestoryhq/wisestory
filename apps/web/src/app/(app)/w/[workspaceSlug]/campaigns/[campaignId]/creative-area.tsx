@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { completeBriefingGeneration } from "@/app/actions/campaign";
 import { BriefingChat } from "./briefing-chat";
+import { BriefingMarkdown } from "./briefing-markdown";
 import type { Message } from "./chat-message";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
@@ -34,6 +35,12 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const textBufferRef = useRef("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll as content streams in
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [parts, thinkingText]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -176,10 +183,7 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
         <div className="rounded-xl border bg-background shadow-sm">
           {/* Document header */}
           <div className="border-b px-8 py-6">
-            <h1
-              className="text-2xl font-bold tracking-tight"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
+            <h1 className="text-2xl font-bold tracking-tight">
               Creative Briefing
             </h1>
             {!isDone && !error && (
@@ -191,7 +195,7 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
           </div>
 
           {/* Streaming content */}
-          <div className="px-8 py-6 space-y-4">
+          <div className="px-8 py-6">
             {thinkingText && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -199,152 +203,46 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
               </div>
             )}
 
-            {parts.map((part, index) => {
-              if (part.type === "text") {
-                return (
-                  <div key={index} className="prose prose-sm max-w-none">
-                    <SimpleMarkdown content={part.content} />
-                  </div>
-                );
-              }
-              if (part.type === "image") {
-                return (
-                  <div key={index} className="my-6">
-                    <img
-                      src={`data:${part.mimeType};base64,${part.data}`}
-                      alt="Briefing reference image"
-                      className="w-full rounded-lg shadow-sm"
-                    />
-                  </div>
-                );
-              }
-              return null;
-            })}
+            <div className="briefing-prose">
+              {parts.map((part, index) => {
+                if (part.type === "text") {
+                  return <BriefingMarkdown key={index} content={part.content} />;
+                }
+                if (part.type === "image") {
+                  return (
+                    <div key={index} className="my-6">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={`data:${part.mimeType};base64,${part.data}`}
+                        alt="Briefing reference image"
+                        className="w-full rounded-lg shadow-sm"
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
 
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+              <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
                 {error}
               </div>
             )}
           </div>
         </div>
+
+        {/* Generating indicator below card */}
+        {!isDone && !error && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Generating your creative briefing...</span>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
       </div>
     </div>
-  );
-}
-
-function renderInline(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = [];
-  const regex = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|__(.+?)__|_(.+?)_)/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-
-    if (match[2]) {
-      parts.push(<strong key={match.index}><em>{match[2]}</em></strong>);
-    } else if (match[3]) {
-      parts.push(<strong key={match.index}>{match[3]}</strong>);
-    } else if (match[4]) {
-      parts.push(<em key={match.index}>{match[4]}</em>);
-    } else if (match[5]) {
-      parts.push(<strong key={match.index}>{match[5]}</strong>);
-    } else if (match[6]) {
-      parts.push(<em key={match.index}>{match[6]}</em>);
-    }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
-}
-
-function SimpleMarkdown({ content }: { content: string }) {
-  const lines = content.split("\n");
-
-  return (
-    <>
-      {lines.map((line, i) => {
-        const trimmed = line.trim();
-        if (!trimmed) return <div key={i} className="h-2" />;
-
-        if (trimmed.startsWith("### ")) {
-          return (
-            <h3
-              key={i}
-              className="mt-6 mb-2 text-lg font-semibold"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              {renderInline(trimmed.slice(4))}
-            </h3>
-          );
-        }
-        if (trimmed.startsWith("## ")) {
-          return (
-            <h2
-              key={i}
-              className="mt-8 mb-3 text-xl font-bold"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              {renderInline(trimmed.slice(3))}
-            </h2>
-          );
-        }
-        if (trimmed.startsWith("# ")) {
-          return (
-            <h1
-              key={i}
-              className="mt-8 mb-4 text-2xl font-bold"
-              style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-            >
-              {renderInline(trimmed.slice(2))}
-            </h1>
-          );
-        }
-
-        if (trimmed === "---" || trimmed === "***") {
-          return <hr key={i} className="my-6 border-border/50" />;
-        }
-
-        if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-          return (
-            <div key={i} className="flex gap-2 pl-4">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
-              <p className="text-sm leading-relaxed text-foreground/90">
-                {renderInline(trimmed.slice(2))}
-              </p>
-            </div>
-          );
-        }
-
-        const numberedMatch = trimmed.match(/^(\d+)\.\s+(.*)$/);
-        if (numberedMatch) {
-          return (
-            <div key={i} className="flex gap-2 pl-4">
-              <span className="shrink-0 text-sm font-medium text-muted-foreground">
-                {numberedMatch[1]}.
-              </span>
-              <p className="text-sm leading-relaxed text-foreground/90">
-                {renderInline(numberedMatch[2])}
-              </p>
-            </div>
-          );
-        }
-
-        return (
-          <p key={i} className="text-sm leading-relaxed text-foreground/90">
-            {renderInline(trimmed)}
-          </p>
-        );
-      })}
-    </>
   );
 }
 
