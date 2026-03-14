@@ -10,8 +10,8 @@ import { ChatMessage } from "./chat-message";
 import { BriefingGraph } from "./briefing-graph";
 import {
   ArrowLeft,
+  ArrowRight,
   ArrowUp,
-  CheckCircle2,
   Loader2,
   Network,
 } from "lucide-react";
@@ -370,12 +370,12 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                 disabled={isApproving}
                 className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
               >
+                Generate Briefing
                 {isApproving ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <ArrowRight className="h-3.5 w-3.5" />
                 )}
-                Generate Briefing
               </Button>
             </div>
           )}
