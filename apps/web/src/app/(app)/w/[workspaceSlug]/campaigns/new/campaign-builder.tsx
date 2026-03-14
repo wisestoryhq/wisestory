@@ -5,15 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import NextImage from "next/image";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { createCampaign } from "@/app/actions/campaign";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
-  Sparkles,
-  ChevronDown,
+  ArrowRight,
   AlertCircle,
 } from "lucide-react";
 
@@ -25,7 +23,6 @@ type FormatOption = {
   value: string;
   label: string;
   detail: string;
-  /** Visual preview: renders the aspect ratio shape */
   preview: "square" | "tall" | "wide" | "slides-square" | "slides-wide";
 };
 
@@ -33,7 +30,6 @@ type PlatformGroup = {
   id: string;
   platform: string;
   icon: string;
-  /** Whether the icon needs inversion in dark mode (black logos) */
   invertDark?: boolean;
   formats: FormatOption[];
 };
@@ -87,7 +83,6 @@ const PLATFORM_GROUPS: PlatformGroup[] = [
   },
 ];
 
-/** Renders a visual aspect ratio preview shape */
 function FormatPreview({
   type,
   selected,
@@ -134,15 +129,13 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
 
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
-  const [instructions, setInstructions] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const base = `/w/${workspaceSlug}`;
-  const canGenerate = selectedType && prompt.trim().length > 0 && !isPending;
+  const canStart = selectedType && prompt.trim().length > 0 && !isPending;
 
-  function handleGenerate() {
-    if (!canGenerate) return;
+  function handleStart() {
+    if (!canStart) return;
     setError(null);
 
     startTransition(async () => {
@@ -151,7 +144,6 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
           workspaceSlug,
           mediaType: selectedType,
           prompt: prompt.trim(),
-          instructions: instructions.trim() || undefined,
         });
 
         router.push(`${base}/campaigns/${result.campaignId}`);
@@ -161,6 +153,13 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
         );
       }
     });
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" && !e.shiftKey && canStart) {
+      e.preventDefault();
+      handleStart();
+    }
   }
 
   return (
@@ -181,7 +180,7 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
             New Campaign
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose a format and describe what you want to create.
+            Pick a format, then describe your content idea.
           </p>
         </div>
 
@@ -247,7 +246,6 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
                           isPending && "pointer-events-none opacity-50"
                         )}
                       >
-                        {/* Aspect ratio preview */}
                         <div className="mb-3.5 flex h-14 items-center justify-center">
                           <FormatPreview
                             type={format.preview}
@@ -255,7 +253,6 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
                           />
                         </div>
 
-                        {/* Label */}
                         <span
                           className={cn(
                             "text-sm font-medium leading-tight transition-colors",
@@ -267,12 +264,10 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
                           {format.label}
                         </span>
 
-                        {/* Detail */}
                         <span className="mt-1 text-[11px] text-muted-foreground">
                           {format.detail}
                         </span>
 
-                        {/* Selected check */}
                         {isSelected && (
                           <div className="absolute top-2.5 right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#f6b900]">
                             <svg
@@ -301,65 +296,52 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
 
         <Separator className="mb-10" />
 
-        {/* Step 2: Prompt */}
+        {/* Step 2: Content idea input */}
         <div className="mb-8">
           <div className="mb-4 flex items-baseline gap-3">
             <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
               2
             </span>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground/70">
-              Brief
+              What content are you creating?
             </h2>
           </div>
 
-          <Textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Describe the content you want to create..."
-            rows={5}
-            disabled={isPending}
-            className="resize-none text-sm leading-relaxed"
-          />
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Be specific about the message, tone, and any key visuals you
-            want included. The AI will use your brand knowledge to stay
-            on-brand.
-          </p>
-        </div>
-
-        {/* Advanced instructions (collapsible) */}
-        <div className="mb-10">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ChevronDown
-              className={`h-3.5 w-3.5 transition-transform duration-200 ${
-                showAdvanced ? "rotate-180" : ""
-              }`}
+          <div className="relative">
+            <input
+              type="text"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe your content idea..."
+              disabled={isPending}
+              className={cn(
+                "w-full rounded-xl border bg-background px-4 py-3.5 pr-12 text-sm",
+                "placeholder:text-muted-foreground/60",
+                "focus:outline-none focus:ring-2 focus:ring-[#f6b900]/30 focus:border-[#f6b900]/40",
+                "disabled:opacity-50",
+                "transition-all duration-200"
+              )}
             />
-            Advanced instructions
-          </button>
-
-          <div
-            className={`grid transition-all duration-200 ${
-              showAdvanced
-                ? "mt-3 grid-rows-[1fr] opacity-100"
-                : "grid-rows-[0fr] opacity-0"
-            }`}
-          >
-            <div className="overflow-hidden">
-              <Textarea
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                placeholder="Additional creative direction, constraints, or specific requirements..."
-                rows={3}
-                disabled={isPending}
-                className="resize-none text-sm"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={!canStart}
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2",
+                "flex h-8 w-8 items-center justify-center rounded-lg",
+                "transition-all duration-200",
+                canStart
+                  ? "bg-[#f6b900] text-white hover:bg-[#e0a800]"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            You&apos;ll collaborate with our creative director to develop the concept.
+          </p>
         </div>
 
         {/* Error message */}
@@ -369,17 +351,6 @@ export function CampaignBuilder({ workspaceSlug }: Props) {
             <p>{error}</p>
           </div>
         )}
-
-        {/* Generate button */}
-        <Button
-          size="lg"
-          className="h-11 w-full gap-2 text-[15px] font-semibold disabled:bg-muted disabled:text-muted-foreground"
-          disabled={!canGenerate}
-          onClick={handleGenerate}
-        >
-          <Sparkles className="h-4 w-4" />
-          Generate
-        </Button>
       </div>
     </div>
   );
