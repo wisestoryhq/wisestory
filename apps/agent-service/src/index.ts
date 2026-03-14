@@ -5,6 +5,7 @@ import { streamSSE } from "hono/streaming";
 import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
 import { createBriefingChatAgent } from "./agent.js";
 import { retrieveKnowledge } from "./tools/retrieve-knowledge.js";
+import { extractBriefingDecisions } from "./tools/extract-decisions.js";
 import { prisma } from "./db.js";
 import type { MediaType } from "@wisestory/prompts";
 
@@ -198,6 +199,14 @@ app.post("/chat/stream", async (c) => {
           },
         });
         console.log(`[chat/stream] Saved: ${textBuffer.length} chars, ${collectedImages.length} images`);
+
+        // Fire-and-forget decision extraction into knowledge graph
+        void extractBriefingDecisions(
+          campaignId,
+          textBuffer,
+          collectedImages,
+          historyPreamble + message
+        ).catch(err => console.error("[chat/stream] Decision extraction failed:", err));
       }
 
       await stream.writeSSE({ event: "done", data: "{}" });
