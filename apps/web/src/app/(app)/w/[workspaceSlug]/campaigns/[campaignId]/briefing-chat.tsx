@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { generateBriefingDoc } from "@/app/actions/campaign";
 import { ChatMessage } from "./chat-message";
+import type { Message, MessagePart } from "./chat-message";
 import { BriefingGraph } from "./briefing-graph";
 import {
   ArrowLeft,
@@ -28,14 +29,6 @@ const MEDIA_TYPE_LABELS: Record<string, string> = {
   linkedin_post: "LinkedIn Post",
   linkedin_carousel: "LinkedIn Carousel",
   multi_platform_campaign: "Multi-Platform",
-};
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  images: Array<{ data: string; mimeType: string }>;
-  createdAt: string;
 };
 
 type Campaign = {
@@ -65,18 +58,15 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
-  // Ref-based guard to prevent React strict mode double-fire
   const isStreamingRef = useRef(false);
   const hasSentInitialRef = useRef(false);
 
   const base = `/w/${workspaceSlug}`;
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, thinkingText]);
 
-  // Auto-send the initial prompt as first message if no messages exist
   useEffect(() => {
     if (
       !hasSentInitialRef.current &&
@@ -92,36 +82,33 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   const sendMessage = useCallback(async (messageText: string) => {
     if (!messageText.trim() || isStreamingRef.current) return;
 
-    // Use ref for immediate guard (not batched like setState)
     isStreamingRef.current = true;
     setError(null);
     setIsStreaming(true);
     setThinkingText(null);
 
-    // Add user message to UI
+    // Add user message
     const userMsg: Message = {
       id: `temp-${Date.now()}`,
       role: "user",
-      content: messageText.trim(),
-      images: [],
+      parts: [{ type: "text", content: messageText.trim() }],
       createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // Stream response from agent service (server loads history from DB)
     const controller = new AbortController();
     abortRef.current = controller;
 
-    let assistantContent = "";
-    const assistantImages: Array<{ data: string; mimeType: string }> = [];
+    // Accumulate parts in order: text deltas build the current text part,
+    // images get inserted as separate parts, preserving interleaving.
+    const assistantParts: MessagePart[] = [];
+    let currentTextBuffer = "";
 
     try {
       const response = await fetch(`/api/campaigns/${campaign.id}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: messageText.trim(),
-        }),
+        body: JSON.stringify({ message: messageText.trim() }),
         signal: controller.signal,
       });
 
@@ -133,17 +120,10 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
       const decoder = new TextDecoder();
       let buffer = "";
 
-      // Add placeholder assistant message
       const assistantMsgId = `assistant-${Date.now()}`;
       setMessages((prev) => [
         ...prev,
-        {
-          id: assistantMsgId,
-          role: "assistant",
-          content: "",
-          images: [],
-          createdAt: new Date().toISOString(),
-        },
+        { id: assistantMsgId, role: "assistant", parts: [], createdAt: new Date().toISOString() },
       ]);
 
       let currentEvent = "";
@@ -171,28 +151,32 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                 case "part":
                   setThinkingText(null);
                   if (data.type === "text") {
-                    // Delta append (not replace!)
-                    assistantContent += data.content;
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, content: assistantContent }
-                          : m
-                      )
-                    );
+                    // Append text delta to current text buffer
+                    currentTextBuffer += data.content;
+                    // Update or add the trailing text part
+                    const lastPart = assistantParts[assistantParts.length - 1];
+                    if (lastPart && lastPart.type === "text") {
+                      lastPart.content = currentTextBuffer;
+                    } else {
+                      assistantParts.push({ type: "text", content: currentTextBuffer });
+                    }
                   } else if (data.type === "image") {
-                    assistantImages.push({
+                    // Flush text buffer — next text will be a new part
+                    currentTextBuffer = "";
+                    assistantParts.push({
+                      type: "image",
                       data: data.data,
                       mimeType: data.mimeType,
                     });
-                    setMessages((prev) =>
-                      prev.map((m) =>
-                        m.id === assistantMsgId
-                          ? { ...m, images: [...assistantImages] }
-                          : m
-                      )
-                    );
                   }
+                  // Update message with current parts snapshot
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, parts: [...assistantParts] }
+                        : m
+                    )
+                  );
                   break;
 
                 case "done":
@@ -211,8 +195,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
           }
         }
       }
-
-      // Assistant message is saved by the agent service directly to DB
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setError(err instanceof Error ? err.message : "Something went wrong");
@@ -243,11 +225,13 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   async function handleGenerateBriefing() {
     setIsApproving(true);
     try {
-      // Extract the last assistant message as the briefing summary
       const lastAssistant = [...messages]
         .reverse()
         .find((m) => m.role === "assistant");
-      const summary = lastAssistant?.content || campaign.prompt;
+      const summary = lastAssistant?.parts
+        .filter((p): p is { type: "text"; content: string } => p.type === "text")
+        .map((p) => p.content)
+        .join("\n") || campaign.prompt;
 
       await generateBriefingDoc(campaign.id, summary);
       router.refresh();
@@ -257,7 +241,9 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     }
   }
 
-  const hasAssistantResponse = messages.some((m) => m.role === "assistant" && m.content);
+  const hasAssistantResponse = messages.some(
+    (m) => m.role === "assistant" && m.parts.some((p) => p.type === "text" && p.content)
+  );
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
@@ -277,7 +263,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             {MEDIA_TYPE_LABELS[campaign.mediaType] ?? campaign.mediaType}
           </p>
         </div>
-        {/* intentionally empty — actions moved to input area */}
       </div>
 
       {/* Messages */}
@@ -287,7 +272,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             <ChatMessage key={message.id} message={message} />
           ))}
 
-          {/* Thinking indicator */}
           {thinkingText && (
             <div className="flex items-start gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
@@ -299,7 +283,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
               {error}
@@ -382,7 +365,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         </div>
       </div>
 
-      {/* Knowledge Graph Overlay */}
       {showGraph && (
         <BriefingGraph
           campaignId={campaign.id}

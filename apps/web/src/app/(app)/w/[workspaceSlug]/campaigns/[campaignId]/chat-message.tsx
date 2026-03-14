@@ -3,11 +3,14 @@
 import { cn } from "@/lib/utils";
 import { User, Sparkles } from "lucide-react";
 
-type Message = {
+type TextPart = { type: "text"; content: string };
+type ImagePart = { type: "image"; data: string; mimeType: string };
+export type MessagePart = TextPart | ImagePart;
+
+export type Message = {
   id: string;
   role: "user" | "assistant";
-  content: string;
-  images: Array<{ data: string; mimeType: string }>;
+  parts: MessagePart[];
   createdAt: string;
 };
 
@@ -39,50 +42,46 @@ export function ChatMessage({ message }: Props) {
         )}
       </div>
 
-      {/* Content */}
+      {/* Content — render parts in order */}
       <div
         className={cn(
-          "max-w-[85%] space-y-3",
+          "max-w-[85%] space-y-2",
           isUser ? "items-end" : "items-start"
         )}
       >
-        {/* Text bubble */}
-        {message.content && (
-          <div
-            className={cn(
-              "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-              isUser
-                ? "rounded-tr-sm bg-primary text-primary-foreground"
-                : "rounded-tl-sm bg-muted/50"
-            )}
-          >
-            <MessageContent content={message.content} />
-          </div>
-        )}
-
-        {/* Images */}
-        {message.images.length > 0 && (
-          <div
-            className={cn(
-              "flex flex-wrap gap-2",
-              isUser ? "justify-end" : "justify-start"
-            )}
-          >
-            {message.images.map((img, i) => (
+        {message.parts.map((part, i) => {
+          if (part.type === "text" && part.content) {
+            return (
+              <div
+                key={i}
+                className={cn(
+                  "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                  isUser
+                    ? "rounded-tr-sm bg-primary text-primary-foreground"
+                    : "rounded-tl-sm bg-muted/50"
+                )}
+              >
+                <MessageContent content={part.content} />
+              </div>
+            );
+          }
+          if (part.type === "image") {
+            return (
               <div
                 key={i}
                 className="overflow-hidden rounded-xl border bg-muted/30"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={`data:${img.mimeType};base64,${img.data}`}
+                  src={`data:${part.mimeType};base64,${part.data}`}
                   alt={`Generated concept ${i + 1}`}
                   className="max-h-80 max-w-full object-contain"
                 />
               </div>
-            ))}
-          </div>
-        )}
+            );
+          }
+          return null;
+        })}
       </div>
     </div>
   );

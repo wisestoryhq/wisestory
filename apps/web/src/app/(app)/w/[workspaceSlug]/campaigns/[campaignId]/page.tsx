@@ -42,13 +42,25 @@ export default async function CampaignPage({
 
   // Briefing phase or generating doc: show the creative area
   if (campaign.status === "briefing" || campaign.status === "generating_doc") {
-    const messages = campaign.messages.map((m) => ({
-      id: m.id,
-      role: m.role as "user" | "assistant",
-      content: m.content,
-      images: (m.images as Array<{ data: string; mimeType: string }>) ?? [],
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const messages = campaign.messages.map((m) => {
+      const parts: Array<
+        | { type: "text"; content: string }
+        | { type: "image"; data: string; mimeType: string }
+      > = [];
+      if (m.content) {
+        parts.push({ type: "text", content: m.content });
+      }
+      const images = (m.images as Array<{ data: string; mimeType: string }>) ?? [];
+      for (const img of images) {
+        parts.push({ type: "image", data: img.data, mimeType: img.mimeType });
+      }
+      return {
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        parts,
+        createdAt: m.createdAt.toISOString(),
+      };
+    });
 
     return (
       <CreativeArea

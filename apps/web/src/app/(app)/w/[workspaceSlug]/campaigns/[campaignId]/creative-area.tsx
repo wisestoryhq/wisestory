@@ -4,15 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BriefingChat } from "./briefing-chat";
+import type { Message } from "./chat-message";
 import { ArrowLeft, Loader2 } from "lucide-react";
-
-type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  images: Array<{ data: string; mimeType: string }>;
-  createdAt: string;
-};
 
 type Campaign = {
   id: string;

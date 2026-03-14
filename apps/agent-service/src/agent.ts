@@ -1,5 +1,5 @@
 import { LlmAgent } from "@google/adk";
-import { BRIEFING_CHAT_INSTRUCTION, BRIEFING_DOCUMENT_INSTRUCTION } from "@wisestory/prompts";
+import { BRIEFING_CHAT_INSTRUCTION, BRIEFING_DOCUMENT_INSTRUCTION, MEDIA_TYPE_ASPECT_RATIOS } from "@wisestory/prompts";
 import type { MediaType } from "@wisestory/prompts";
 
 /**
@@ -23,12 +23,17 @@ export function createBriefingChatAgent({
     );
   }
 
+  const aspectRatio = MEDIA_TYPE_ASPECT_RATIOS[mediaType] ?? "1:1";
+
   return new LlmAgent({
     name: "briefing_director",
     model: "gemini-2.5-flash-image",
     instruction,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio,
+      },
     },
   });
 }
@@ -55,12 +60,17 @@ ${graphSummary}
 
 Write the briefing document now. Include generated reference images where appropriate.`;
 
+  const aspectRatio = MEDIA_TYPE_ASPECT_RATIOS[mediaType] ?? "1:1";
+
   return new LlmAgent({
     name: "briefing_document",
     model: "gemini-2.5-flash-image",
     instruction,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio,
+      },
     },
   });
 }
