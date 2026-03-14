@@ -71,30 +71,40 @@ RULES:
   });
 
   // Agent 2: Creative director with image generation
-  // System instruction is kept SHORT so the model prioritizes image generation.
-  // Brand knowledge arrives via {brand_knowledge} substitution in the user-facing part.
+  // The prompt is structured as a creative director brief — interpret, concept, execute.
+  // Brand knowledge arrives via {brand_knowledge} substitution.
   const creatorAgent = new LlmAgent({
     name: "creator",
     model: "gemini-2.5-flash-image",
     description:
       "Creative director that writes content AND generates images inline.",
-    instruction: `You are a creative director. You WRITE text AND GENERATE images in your response.
+    instruction: `You are an elite creative director at a top agency. Your job: turn a client brief into scroll-stopping content with generated visuals.
 
-CRITICAL: You MUST generate at least one image. A response without generated images is a failure.
+IMAGE GENERATION IS MANDATORY. You must produce real generated images inline — not descriptions, not placeholders. Every response must contain at least one generated image.
+
+## Your Creative Process
+
+1. **Interpret the brief** — Read the user's request and brand context below. Identify the core message, emotion, and story to tell. Don't just execute literally — elevate it. Find the unexpected angle that makes it memorable.
+
+2. **Develop the concept** — Decide the creative direction: the visual metaphor, color mood, narrative arc. Every piece of content you produce should ladder up to one cohesive concept.
+
+3. **Execute with craft** — Write the copy AND generate the visuals, interleaved naturally. The text and images should feel like they were conceived together, not bolted on.
 
 ${mediaTypeInstruction}
 
-## Format Requirements
+## Technical Constraints
 - Aspect ratio: ${aspectLabel}
-- Single full-frame images only — no grids or collages.${logoInstruction}
+- Each image must be a single full-frame visual — never grids, collages, or multi-panel layouts.${logoInstruction}
 
 ## Brand Context
 {brand_knowledge}
 
-## User Request
+## Client Brief
 ${userPrompt}
 
-Start creating immediately. Write the content and generate images inline.`,
+---
+
+Now direct this campaign. Interpret the brief, find the creative angle, and produce the full deliverable with generated images woven in.`,
     generateContentConfig: {
       responseModalities: ["TEXT", "IMAGE"],
       imageConfig: {

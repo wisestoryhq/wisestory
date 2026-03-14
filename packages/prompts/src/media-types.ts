@@ -5,178 +5,140 @@ import type { MediaType } from "./types";
  * Each tells the agent what to produce and when to generate images.
  */
 const MEDIA_TYPE_INSTRUCTIONS: Record<MediaType, string> = {
-  instagram_post: `## Your Task: Instagram Post
+  instagram_post: `## Format: Instagram Post (1 image)
 
-Create a complete Instagram post package:
+Deliver: caption + 1 hero image + hashtags.
 
-1. **Caption** — Write a compelling caption using the brand's voice. Include line breaks for readability. End with a clear CTA.
-2. **Hero Image** — Generate one striking hero image that captures the post's message using the brand's visual style and colors. Generate this image right after the caption.
-3. **Hashtags** — Provide 8-15 relevant hashtags mixing branded, niche, and discovery tags.
+**Copy direction**: Write a caption that hooks in the first line (this shows before "...more"). Use the brand's voice. Line breaks for rhythm. End with a CTA.
 
-### Image Direction
-The hero image should be scroll-stopping. Use the brand's color palette, photography style, and visual identity from the retrieved brand knowledge. Make it feel native to the brand, not generic stock art.`,
+**Image direction**: Generate one scroll-stopping hero image right after the caption. The image should carry the post's core message visually — not just illustrate the text, but amplify it. Ground it in the brand's color palette and visual identity.
 
-  instagram_carousel: `## Your Task: Instagram Carousel
+**Hashtags**: 8–15, mixing branded + niche + discovery.`,
 
-Create a complete carousel package with 5-8 slides:
+  instagram_carousel: `## Format: Instagram Carousel (MULTI-IMAGE — 5 to 8 slides)
 
-1. **Caption** — Write the carousel caption with a hook in the first line, value proposition, and CTA.
-2. **Slide-by-slide content** — For each slide, provide:
-   - **Slide headline** — Bold, concise text for the slide
-   - **Slide body** — Supporting text or key point
-   - **Slide image** — Generate an image for each slide that matches the brand's visual style. Generate the image immediately after describing each slide.
-3. **Cover slide** — The first slide must be a strong hook with a generated cover image.
-4. **CTA slide** — The final slide must be a clear call to action with a generated image.
-5. **Hashtags** — 8-15 relevant hashtags.
+This is a swipeable carousel. You MUST generate a separate image for EACH slide. This format requires the most content — treat it like a visual story told across multiple frames.
 
-### Image Direction
-IMPORTANT: Generate a separate image for EACH slide. These will be displayed as a swipeable carousel — each slide needs its own standalone image. Each slide image should feel like part of a cohesive series — consistent color palette, typography style, and visual language derived from the brand guidelines. The cover must be scroll-stopping.`,
+**Structure your output as a repeating pattern:**
+For each slide, write the slide text, then immediately generate that slide's image before moving to the next slide. Follow this pattern:
 
-  instagram_reel: `## Your Task: Instagram Reel
+→ Slide 1 (Cover): headline + [GENERATE IMAGE]
+→ Slide 2: point + [GENERATE IMAGE]
+→ Slide 3: point + [GENERATE IMAGE]
+→ Slide 4: point + [GENERATE IMAGE]
+→ Slide 5 (CTA): call to action + [GENERATE IMAGE]
+...and so on for 5–8 slides.
 
-Create a complete reel storyboard package:
+**Copy direction**: Write a carousel caption with a hook first line, value proposition, and CTA. Then the slide-by-slide content with bold headlines and concise supporting text per slide.
 
-1. **Reel concept** — One-line creative concept for the reel.
-2. **Scene-by-scene storyboard** — For each scene (4-6 scenes), provide:
-   - **Timing** — Duration of the scene (e.g., "0:00-0:03")
-   - **Visual direction** — What appears on screen
-   - **On-screen text** — Any text overlays
-   - **Voiceover/narration** — What is spoken
-   - **Keyframe image** — Generate an image visualizing the key moment of this scene. Generate it right after describing the scene.
-3. **Caption** — Instagram caption for the reel.
-4. **Audio suggestion** — Trending audio or music style recommendation.
-5. **CTA** — End screen call to action.
+**Image direction**: Each slide image must be a standalone visual that works on its own but feels part of a cohesive series — same color palette, consistent visual language, unified typography style. The cover slide must be scroll-stopping. The CTA slide must feel like a satisfying conclusion.
 
-### Image Direction
-Keyframe images should capture the most impactful moment of each scene. Use the brand's visual aesthetic. Think cinematic — these frames tell the story.`,
+**Hashtags**: 8–15.`,
 
-  tiktok_video: `## Your Task: TikTok Video
+  instagram_reel: `## Format: Instagram Reel (storyboard, 4–6 scenes)
 
-Create a complete TikTok video script package:
+Deliver: concept + scene-by-scene storyboard with keyframe images + caption + audio suggestion.
 
-1. **Hook** — The first 1-2 seconds that stop the scroll. This is critical. Make it bold and unexpected.
-2. **Beat-by-beat flow** — For each beat (4-6 beats), provide:
-   - **Beat description** — What happens in this moment
-   - **Dialogue/voiceover** — What is said (write in a conversational, authentic tone)
-   - **On-screen text** — Text overlays that reinforce the message
-   - **Visual direction** — Camera angle, transitions, what's shown
-   - **Scene image** — Generate an image for each key beat. Generate it immediately after the beat description.
-3. **Caption** — TikTok caption with relevant hooks.
-4. **Sound** — Audio/sound recommendation.
-5. **CTA** — Clear next step for the viewer.
+**Copy direction**: Start with a one-line creative concept. Then storyboard each scene with timing, visual direction, on-screen text, and voiceover. Write the caption separately.
 
-### Image Direction
-TikTok visuals should feel authentic and energetic, not overly polished. Use brand colors but keep the vibe native to the platform. Vertical format mindset.`,
+**Image direction**: Generate a keyframe image for each scene — capture the most cinematic, impactful moment. These are storyboard frames, so they should clearly communicate the visual progression of the story.
 
-  youtube_shorts: `## Your Task: YouTube Shorts
+**Audio**: Suggest a trending audio style or music mood that fits.`,
 
-Create a complete Shorts script package (15-60 seconds):
+  tiktok_video: `## Format: TikTok Video (storyboard, 4–6 beats)
 
-1. **Title** — Clickable, curiosity-driven title.
-2. **Hook** — First 2 seconds that grab attention. This determines whether people watch.
-3. **Script** — Full script with timing:
-   - Write it as a continuous flow with beat markers
-   - Each beat has: narration, on-screen text, and visual direction
-   - Generate a storyboard frame image for each major beat (3-4 images total). Generate each image right after its beat.
-4. **Thumbnail concept** — Describe and generate a thumbnail image that maximizes click-through rate.
-5. **End CTA** — What the viewer should do next (subscribe, check link, etc.).
-6. **Description** — Short YouTube description with relevant keywords.
+Deliver: hook + beat-by-beat flow with scene images + caption + sound + CTA.
 
-### Image Direction
-Storyboard frames should clearly communicate the visual progression. The thumbnail must be bold, high-contrast, and instantly readable at small sizes. Use brand colors prominently.`,
+**Copy direction**: The hook (first 1–2 seconds) is everything — make it bold and unexpected. Then write beat-by-beat: what happens, what's said (conversational tone), on-screen text overlays, visual direction.
 
-  youtube_video: `## Your Task: YouTube Video
+**Image direction**: Generate a scene image for each beat. TikTok visuals should feel authentic and energetic — not overly polished. Use brand colors but keep the vibe native to the platform.
 
-Create a complete long-form video script package:
+**Sound**: Recommend a trending audio or music style.`,
 
-1. **Title options** — 3 title variants optimized for search and click-through.
-2. **Thumbnail** — Describe and generate a thumbnail image that drives clicks.
-3. **Intro hook** — First 15-30 seconds that convince viewers to stay. This is the most important part.
-4. **Video outline** — Section-by-section structure with estimated timestamps.
-5. **Full script** — For each section:
-   - **Section title** — Clear heading
-   - **Script** — Full narration text
-   - **B-roll notes** — What supporting visuals to show
-   - **Key visual** — Generate an image for the main visual concept of each section. Generate it right after the script for that section.
-6. **Closing CTA** — Subscribe, like, comment prompt with a specific hook.
-7. **Description** — YouTube description with timestamps, links, and keywords.
-8. **Tags** — 10-15 relevant YouTube tags.
+  youtube_shorts: `## Format: YouTube Shorts (storyboard, 15–60 seconds)
 
-### Image Direction
-Each image must be a SINGLE standalone full-frame visual — never a grid, collage, or multi-panel layout. Section visuals should feel like key frames from a polished video. The thumbnail needs to pop — bold text, high contrast, and a clear subject. Match the brand's visual sophistication level.`,
+Deliver: title + hook + scripted beats with storyboard images + thumbnail + description.
 
-  x_post: `## Your Task: X Post
+**Copy direction**: Write a clickable title. The hook (first 2 seconds) determines whether people watch. Then script the beats with narration, on-screen text, and visual direction.
 
-Create a complete X (formerly Twitter) post package:
+**Image direction**: Generate a storyboard frame for each major beat (3–4 images). Also generate a thumbnail that's bold, high-contrast, and instantly readable at small sizes. Use brand colors prominently.`,
 
-1. **Tweet copy** — Write a compelling tweet within 280 characters. Make every word count. Use the brand's voice but adapted for X's fast, direct communication style. Include a clear hook in the first line.
-2. **Hero image** — Generate one striking hero image (16:9 landscape) that complements the tweet and drives engagement. Generate this image right after the tweet copy.
-3. **Alt text** — Write descriptive alt text for the image (for accessibility).
-4. **Hashtags** — 2-4 relevant hashtags (X favors fewer, more targeted hashtags than Instagram).
-5. **Thread potential** — One line suggesting how this post could be expanded into a thread if it gains traction.
+  youtube_video: `## Format: YouTube Video (long-form script with key visuals)
 
-### Image Direction
-The hero image should be bold and high-contrast, optimized for timeline scroll. Use the brand's color palette and visual identity. X images display at 16:9 in the timeline — design for that crop. Text on the image should be minimal and large enough to read on mobile.`,
+Deliver: title options + thumbnail + intro hook + full section-by-section script with key visuals + description + tags.
 
-  x_thread: `## Your Task: X Thread
+**Copy direction**: Provide 3 title variants optimized for search and CTR. The intro hook (first 15–30 seconds) is the most important part — it must convince viewers to stay. Then a full script organized by sections with timestamps.
 
-Create a complete X (formerly Twitter) thread package (5-10 tweets):
+**Image direction**: Generate a key visual for each major section — these should feel like polished video frames. Generate a thumbnail that pops with bold text, high contrast, and a clear subject.
 
-1. **Hook tweet** — The first tweet must be a scroll-stopping hook that makes people want to read the full thread. This is critical for engagement.
-2. **Thread body** — For each subsequent tweet, provide:
-   - **Tweet number** — Position in the thread (2/8, 3/8, etc.)
-   - **Tweet copy** — The tweet text (max 280 characters each). Write in a conversational, authoritative tone.
-   - **Supporting image** — Generate an image for key tweets (at least 3 images across the thread). Generate each image right after the tweet that uses it.
-3. **Closing tweet** — The final tweet should include a clear CTA (follow, bookmark, share) and a brief summary of the thread's value.
-4. **Thread title image** — Generate a title card image for the first tweet that previews the thread topic.
+**Tags**: 10–15 relevant YouTube tags.`,
 
-### Image Direction
-Thread images should feel like a cohesive visual series — consistent style, colors from the brand palette, and clear messaging. Each image should be able to stand alone while clearly belonging to the thread. Use 16:9 landscape format for all images.`,
+  x_post: `## Format: X Post (1 image)
 
-  linkedin_post: `## Your Task: LinkedIn Post
+Deliver: tweet copy + 1 hero image + alt text + hashtags.
 
-Create a complete LinkedIn post package:
+**Copy direction**: Write a compelling tweet within 280 characters. Every word counts. Hook in the first line. Adapt the brand voice for X's fast, direct style.
 
-1. **Post copy** — Write a professional, engaging LinkedIn post. Open with a strong hook line (this appears before "...see more"). Use short paragraphs and line breaks for scannability. Balance thought leadership with accessibility. Keep it under 1,300 characters for optimal engagement.
-2. **Hero image** — Generate one professional hero image (1.91:1 landscape) that complements the post and drives engagement in the LinkedIn feed. Generate this image right after the post copy.
-3. **Alt text** — Write descriptive alt text for the image.
-4. **Hashtags** — 3-5 relevant professional hashtags.
-5. **Engagement hook** — End with a question or CTA that encourages comments and discussion.
+**Image direction**: Generate one bold, high-contrast hero image (16:9) right after the copy. X images display at 16:9 in the timeline — optimize for that crop. Minimal text on the image, large enough to read on mobile.
 
-### Image Direction
-The hero image should feel polished and professional without being corporate-generic. Use the brand's color palette and visual identity. LinkedIn images display at 1.91:1 in the feed — optimize for that crop. Avoid stock photo aesthetics; aim for distinctive, branded visuals.`,
+**Hashtags**: 2–4 targeted hashtags (X favors fewer than Instagram).`,
 
-  linkedin_carousel: `## Your Task: LinkedIn Carousel (Document Post)
+  x_thread: `## Format: X Thread (MULTI-POST — 5 to 8 tweets, images on key tweets)
 
-Create a complete LinkedIn carousel package with 6-10 slides:
+This is a thread — multiple connected tweets that tell a story. Generate images for at least 3 tweets across the thread.
 
-1. **Post copy** — Write the accompanying post text with a hook that makes people want to swipe through the carousel. Include a CTA to save/share.
-2. **Slide-by-slide content** — For each slide, provide:
-   - **Slide headline** — Bold, concise text (this is the main content readers see)
-   - **Slide body** — Supporting text, data points, or key takeaways
-   - **Slide image** — Generate an image for each slide that matches the brand's visual style. Generate each image immediately after describing the slide.
-3. **Cover slide** — The first slide must have a compelling title that promises value. Generate a cover image.
-4. **CTA slide** — The final slide must include a clear call to action (follow, visit, comment). Generate a closing image.
-5. **Hashtags** — 3-5 relevant professional hashtags.
+**Structure your output as a repeating pattern:**
+→ Tweet 1 (Hook): scroll-stopping opener + [GENERATE TITLE CARD IMAGE]
+→ Tweet 2: key point (280 chars max)
+→ Tweet 3: key point + [GENERATE IMAGE]
+→ Tweet 4: key point
+→ Tweet 5: key point + [GENERATE IMAGE]
+...and so on for 5–8 tweets, ending with a CTA tweet.
 
-### Image Direction
-IMPORTANT: Generate a separate image for EACH slide. These will be displayed as a swipeable carousel — each slide needs its own standalone image. Each slide should feel like part of a cohesive professional presentation — consistent color palette, clean typography style, and clear visual hierarchy derived from the brand guidelines. The cover must be compelling enough to make people start swiping. Use 1:1 square format for all slides.`,
+**Copy direction**: The hook tweet is critical — it determines whether anyone reads the thread. Write each tweet at max 280 characters in a conversational, authoritative tone. The closing tweet should include a CTA (follow, bookmark, share).
 
-  multi_platform_campaign: `## Your Task: Multi-Platform Campaign
+**Image direction**: Thread images should feel like a cohesive visual series — consistent style and brand palette. Each image must stand alone while clearly belonging to the thread. Use 16:9 landscape format.`,
 
-Create a coordinated campaign package across multiple platforms:
+  linkedin_post: `## Format: LinkedIn Post (1 image)
 
-1. **Campaign concept** — The unifying creative angle that ties everything together.
-2. **Campaign narrative** — The story arc across platforms (how each platform piece connects).
-3. **Hero visual** — Generate one hero image that represents the campaign concept.
-4. **Instagram deliverable** — A complete post or carousel with generated visuals (follow the Instagram post/carousel format).
-5. **YouTube Shorts deliverable** — A complete Shorts script with storyboard frames (follow the Shorts format).
-6. **TikTok deliverable** — A complete TikTok script with scene images (follow the TikTok format).
-7. **Cross-platform CTA variants** — Platform-specific CTAs that drive to the same goal.
-8. **Campaign timeline** — Suggested posting order and timing.
+Deliver: post copy + 1 hero image + alt text + hashtags + engagement hook.
 
-### Image Direction
-All visuals across platforms must feel like they belong to the same campaign — unified color palette, visual motifs, and brand elements. Each platform version should feel native while maintaining campaign cohesion.`,
+**Copy direction**: Open with a strong hook line (this appears before "...see more" — it's your one shot). Short paragraphs, line breaks for scannability. Balance thought leadership with accessibility. Under 1,300 characters. End with a question or discussion prompt.
+
+**Image direction**: Generate one polished, professional hero image (1.91:1) right after the copy. It should feel distinctive and branded — not corporate-generic or stock-photo-like. Use the brand's color palette.
+
+**Hashtags**: 3–5 professional hashtags.`,
+
+  linkedin_carousel: `## Format: LinkedIn Carousel (MULTI-IMAGE — 6 to 10 slides)
+
+This is a document-style carousel. You MUST generate a separate image for EACH slide. This format requires substantial content — think of it as a visual micro-presentation.
+
+**Structure your output as a repeating pattern:**
+For each slide, write the slide content, then immediately generate that slide's image before moving to the next slide:
+
+→ Slide 1 (Cover): compelling title + [GENERATE IMAGE]
+→ Slide 2: key insight + [GENERATE IMAGE]
+→ Slide 3: data/evidence + [GENERATE IMAGE]
+→ Slide 4: key insight + [GENERATE IMAGE]
+→ Slide 5: key insight + [GENERATE IMAGE]
+→ Slide 6 (CTA): call to action + [GENERATE IMAGE]
+...and so on for 6–10 slides.
+
+**Copy direction**: Write the accompanying post with a hook that makes people want to swipe. Then deliver slide-by-slide with bold headlines and concise supporting text, data points, or takeaways per slide. Include a CTA to save/share.
+
+**Image direction**: Each slide must be a standalone professional visual that works independently but belongs to a cohesive series — consistent color palette, clean typography, clear visual hierarchy from the brand guidelines. The cover must be compelling enough to trigger the first swipe. Use 1:1 square format.
+
+**Hashtags**: 3–5 professional hashtags.`,
+
+  multi_platform_campaign: `## Format: Multi-Platform Campaign (hero visual + platform deliverables)
+
+Deliver: campaign concept + narrative + hero visual + Instagram deliverable + YouTube Shorts deliverable + TikTok deliverable + cross-platform CTAs + timeline.
+
+**Copy direction**: Start with the unifying creative angle. Then produce platform-native content for Instagram (post or carousel), YouTube Shorts (storyboard), and TikTok (beat flow). Each should feel native to its platform while telling the same story.
+
+**Image direction**: Generate a hero campaign image first. Then generate platform-specific visuals for each deliverable. All visuals must share a unified color palette, visual motifs, and brand elements — they should unmistakably belong to the same campaign.
+
+**Timeline**: Suggest a posting order and timing for maximum cross-platform impact.`,
 };
 
 /**
