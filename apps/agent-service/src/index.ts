@@ -153,10 +153,10 @@ app.post("/generate/stream", async (c) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ? event.content.parts.map((p: any) => {
               if ("text" in p) return `text(${(p.text as string)?.length ?? 0})`;
-              if ("inlineData" in p) return `image`;
+              if ("inlineData" in p) return `image(${p.inlineData?.mimeType})`;
               if ("functionCall" in p) return `fnCall`;
               if ("functionResponse" in p) return `fnResp`;
-              return `unknown(${Object.keys(p).join(",")})`;
+              return `unknown(${JSON.stringify(Object.keys(p))})`;
             })
           : "none";
 
@@ -164,11 +164,26 @@ app.post("/generate/stream", async (c) => {
           `[Event] author=${event.author} partial=${isPartial} turnComplete=${isTurnComplete} parts=[${partsSummary}]`
         );
 
+        // Debug: log full event structure for creator
+        if (event.author === "creator") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          event.content?.parts?.forEach((p: any, i: number) => {
+            const keys = Object.keys(p);
+            const hasText = "text" in p;
+            const hasInlineData = "inlineData" in p;
+            const hasFileData = "fileData" in p;
+            const preview = hasText ? p.text?.substring(0, 100) : hasInlineData ? `mime=${p.inlineData?.mimeType} dataLen=${p.inlineData?.data?.length}` : hasFileData ? `fileUri=${p.fileData?.fileUri} mime=${p.fileData?.mimeType}` : JSON.stringify(p).substring(0, 200);
+            console.log(`  [creator-debug-${i}] partial=${isPartial} keys=${JSON.stringify(keys)} text=${hasText} inlineData=${hasInlineData} fileData=${hasFileData} | ${preview}`);
+          });
+          // Also log raw event keys
+          console.log(`  [creator-event] eventKeys=${JSON.stringify(Object.keys(event))} contentKeys=${JSON.stringify(event.content ? Object.keys(event.content) : 'null')}`);
+        }
+
         if (!event.content?.parts) continue;
 
         for (const part of event.content.parts) {
-          // --- Planner events (chain of thought) ---
-          if (event.author === "planner") {
+          // --- Researcher events (knowledge retrieval) ---
+          if (event.author === "researcher") {
             if ("text" in part && part.text) {
               // For partial planner text, stream as thinking chunks
               console.log(`  [thinking] ${part.text.substring(0, 80)}...`);
@@ -246,10 +261,10 @@ app.post("/generate/stream", async (c) => {
               }
             }
 
+            // Handle inline image data (gemini-2.5-flash-image style)
             if ("inlineData" in part && part.inlineData) {
-              // Images arrive complete (can't be partial)
               console.log(
-                `  [image] ${part.inlineData.mimeType} (${(part.inlineData.data?.length ?? 0)} bytes)`
+                `  [image-inline] ${part.inlineData.mimeType} (${(part.inlineData.data?.length ?? 0)} bytes)`
               );
 
               // Flush any accumulated text before the image

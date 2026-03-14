@@ -1105,10 +1105,10 @@ export function CampaignOutput({
             <Brain className="h-4 w-4 animate-pulse text-primary" />
             <div className="flex-1">
               <p className="text-sm font-medium">
-                Planning your content <PulsingDots />
+                Researching your brand <PulsingDots />
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Retrieving brand knowledge and crafting a creative brief
+                Retrieving brand knowledge to ground your content
               </p>
             </div>
           </div>
