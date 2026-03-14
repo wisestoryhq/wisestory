@@ -5,7 +5,6 @@ export const generateCampaignSchema = z.object({
   mediaType: z.enum(MEDIA_TYPES),
   prompt: z.string().min(1).max(5000),
   instructions: z.string().max(2000).optional(),
-  projectId: z.string().min(1),
 });
 
 export type GenerateCampaignInput = z.infer<typeof generateCampaignSchema>;

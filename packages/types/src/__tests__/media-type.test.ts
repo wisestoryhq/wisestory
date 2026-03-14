@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { MEDIA_TYPES, MEDIA_TYPE_LABELS } from "../media-type";
 
 describe("MEDIA_TYPES", () => {
-  it("contains all 7 media types", () => {
-    expect(MEDIA_TYPES).toHaveLength(7);
+  it("contains all 11 media types", () => {
+    expect(MEDIA_TYPES).toHaveLength(11);
   });
 
   it("includes all expected values", () => {
@@ -13,6 +13,10 @@ describe("MEDIA_TYPES", () => {
     expect(MEDIA_TYPES).toContain("tiktok_video");
     expect(MEDIA_TYPES).toContain("youtube_shorts");
     expect(MEDIA_TYPES).toContain("youtube_video");
+    expect(MEDIA_TYPES).toContain("x_post");
+    expect(MEDIA_TYPES).toContain("x_thread");
+    expect(MEDIA_TYPES).toContain("linkedin_post");
+    expect(MEDIA_TYPES).toContain("linkedin_carousel");
     expect(MEDIA_TYPES).toContain("multi_platform_campaign");
   });
 });

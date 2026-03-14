@@ -22,6 +22,10 @@ enum MediaType {
   tiktok_video
   youtube_shorts
   youtube_video
+  x_post
+  x_thread
+  linkedin_post
+  linkedin_carousel
   multi_platform_campaign
 }
 
@@ -152,7 +156,6 @@ model Workspace {
   updatedAt   DateTime          @updatedAt
 
   members           WorkspaceMember[]
-  projects          Project[]
   sourceConnections SourceConnection[]
   sourceFiles       SourceFile[]
   knowledgeChunks   KnowledgeChunk[]
@@ -177,27 +180,6 @@ model WorkspaceMember {
   @@unique([userId, workspaceId])
   @@index([workspaceId])
   @@map("workspace_members")
-}
-
-// ─── Project ────────────────────────────────────────────────────────
-
-model Project {
-  id          String   @id @default(cuid())
-  name        String
-  brief       String?
-  audience    String?
-  platforms   MediaType[]
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  workspaceId String
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  campaigns Campaign[]
-
-  @@index([workspaceId])
-  @@map("projects")
 }
 
 // ─── Source Connection (Google Drive) ───────────────────────────────
@@ -289,14 +271,11 @@ model Campaign {
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  projectId   String
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   outputs              CampaignOutput[]
   generationSourceRefs GenerationSourceRef[]
 
   @@index([workspaceId])
-  @@index([projectId])
   @@map("campaigns")
 }
 

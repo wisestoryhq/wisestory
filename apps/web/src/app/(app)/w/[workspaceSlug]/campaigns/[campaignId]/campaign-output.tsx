@@ -30,6 +30,9 @@ import {
   Volume2,
   Maximize,
   Music,
+  Repeat2,
+  BarChart3,
+  MoreHorizontal,
 } from "lucide-react";
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -39,6 +42,10 @@ const MEDIA_TYPE_LABELS: Record<string, string> = {
   tiktok_video: "TikTok Video",
   youtube_shorts: "YouTube Shorts",
   youtube_video: "YouTube Video",
+  x_post: "X Post",
+  x_thread: "X Thread",
+  linkedin_post: "LinkedIn Post",
+  linkedin_carousel: "LinkedIn Carousel",
   multi_platform_campaign: "Multi-Platform",
 };
 
@@ -49,6 +56,10 @@ const MEDIA_TYPE_ICONS: Record<string, React.ElementType> = {
   tiktok_video: Video,
   youtube_shorts: Play,
   youtube_video: Monitor,
+  x_post: Globe,
+  x_thread: Globe,
+  linkedin_post: Globe,
+  linkedin_carousel: Globe,
   multi_platform_campaign: Globe,
 };
 
@@ -58,8 +69,6 @@ type Part = TextPart | ImagePart;
 
 type Props = {
   workspaceSlug: string;
-  projectId: string;
-  projectName: string;
   campaign: {
     id: string;
     mediaType: string;
@@ -408,6 +417,234 @@ function YouTubeVideoMockup({ src }: { src: string }) {
   );
 }
 
+function XPostMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-2xl border bg-white dark:bg-black">
+      {/* Header */}
+      <div className="flex items-start gap-2.5 px-4 pt-3">
+        <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">Brand Name</span>
+            <span className="text-[13px] text-zinc-500">@brand_name</span>
+          </div>
+          <p className="mt-0.5 text-[13px] leading-snug text-zinc-800 dark:text-zinc-200 line-clamp-3">Campaign content preview</p>
+        </div>
+      </div>
+      {/* Image */}
+      <div className="mx-4 mt-2.5 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+        <img src={src} alt="Generated content" className="w-full object-contain aspect-video" />
+      </div>
+      {/* Actions */}
+      <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="flex items-center gap-1 text-zinc-500">
+          <MessageCircle className="h-[18px] w-[18px]" />
+          <span className="text-xs">24</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <Repeat2 className="h-[18px] w-[18px]" />
+          <span className="text-xs">128</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <Heart className="h-[18px] w-[18px]" />
+          <span className="text-xs">1.2K</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <BarChart3 className="h-[18px] w-[18px]" />
+          <span className="text-xs">14K</span>
+        </div>
+        <div className="flex items-center gap-2 text-zinc-500">
+          <Bookmark className="h-[18px] w-[18px]" />
+          <Share2 className="h-[18px] w-[18px]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function XThreadMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-2xl border bg-white dark:bg-black">
+      {/* First tweet in thread */}
+      <div className="relative flex items-start gap-2.5 px-4 pt-3 pb-3">
+        {/* Thread line */}
+        <div className="absolute left-[35px] top-[52px] bottom-0 w-0.5 bg-zinc-300 dark:bg-zinc-700" />
+        <div className="relative z-10 h-10 w-10 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">Brand Name</span>
+            <span className="text-[13px] text-zinc-500">@brand_name</span>
+          </div>
+          <p className="mt-0.5 text-[13px] leading-snug text-zinc-800 dark:text-zinc-200 line-clamp-3">Campaign content preview — thread 1/3</p>
+        </div>
+      </div>
+      {/* Second tweet with image */}
+      <div className="relative flex items-start gap-2.5 px-4 pb-3">
+        {/* Thread line continues */}
+        <div className="absolute left-[35px] top-0 bottom-0 w-0.5 bg-zinc-300 dark:bg-zinc-700" />
+        <div className="relative z-10 h-10 w-10 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="text-[13px] font-bold text-zinc-900 dark:text-zinc-100">Brand Name</span>
+            <span className="text-[13px] text-zinc-500">@brand_name</span>
+          </div>
+          <p className="mt-0.5 text-[13px] leading-snug text-zinc-800 dark:text-zinc-200 line-clamp-2">Continuing the story — thread 2/3</p>
+          <div className="mt-2 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+            <img src={src} alt="Generated content" className="w-full object-contain aspect-video" />
+          </div>
+        </div>
+      </div>
+      {/* Thread CTA */}
+      <div className="border-t border-zinc-100 dark:border-zinc-800 px-4 py-2.5">
+        <p className="text-[13px] font-medium text-blue-500">Show this thread</p>
+      </div>
+      {/* Actions */}
+      <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 px-4 py-2.5">
+        <div className="flex items-center gap-1 text-zinc-500">
+          <MessageCircle className="h-[18px] w-[18px]" />
+          <span className="text-xs">48</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <Repeat2 className="h-[18px] w-[18px]" />
+          <span className="text-xs">256</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <Heart className="h-[18px] w-[18px]" />
+          <span className="text-xs">2.4K</span>
+        </div>
+        <div className="flex items-center gap-1 text-zinc-500">
+          <BarChart3 className="h-[18px] w-[18px]" />
+          <span className="text-xs">32K</span>
+        </div>
+        <div className="flex items-center gap-2 text-zinc-500">
+          <Bookmark className="h-[18px] w-[18px]" />
+          <Share2 className="h-[18px] w-[18px]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LinkedInPostMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-xl border bg-white dark:bg-zinc-900">
+      {/* Header */}
+      <div className="flex items-start gap-2.5 px-4 pt-3">
+        <div className="h-12 w-12 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Brand Name</p>
+          <p className="text-[11px] text-zinc-500 leading-tight">Digital Marketing &middot; 1,234 followers</p>
+          <p className="text-[11px] text-zinc-400">2h &middot; <Globe className="inline h-3 w-3" /></p>
+        </div>
+        <MoreHorizontal className="h-5 w-5 text-zinc-400 shrink-0" />
+      </div>
+      {/* Post text */}
+      <div className="px-4 pt-2 pb-2">
+        <p className="text-[13px] leading-snug text-zinc-800 dark:text-zinc-200 line-clamp-3">Campaign content preview for LinkedIn audience...</p>
+      </div>
+      {/* Image — LinkedIn uses ~1.91:1 but we render contained */}
+      <img src={src} alt="Generated content" className="w-full object-contain" />
+      {/* Reactions bar */}
+      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="flex -space-x-1">
+          <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center">
+            <ThumbsUp className="h-2.5 w-2.5 text-white" fill="white" />
+          </div>
+          <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+            <Heart className="h-2.5 w-2.5 text-white" fill="white" />
+          </div>
+        </div>
+        <span className="text-[11px] text-zinc-500 ml-1">248</span>
+        <span className="ml-auto text-[11px] text-zinc-500">18 comments &middot; 5 reposts</span>
+      </div>
+      {/* Actions */}
+      <div className="flex items-center justify-around px-2 py-1">
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <ThumbsUp className="h-4 w-4" />
+          <span className="text-xs font-medium">Like</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <MessageCircle className="h-4 w-4" />
+          <span className="text-xs font-medium">Comment</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <Repeat2 className="h-4 w-4" />
+          <span className="text-xs font-medium">Repost</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <Send className="h-4 w-4" />
+          <span className="text-xs font-medium">Send</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function LinkedInCarouselMockup({ src }: { src: string }) {
+  return (
+    <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-xl border bg-white dark:bg-zinc-900">
+      {/* Header */}
+      <div className="flex items-start gap-2.5 px-4 pt-3">
+        <div className="h-12 w-12 shrink-0 rounded-full bg-blue-100 dark:bg-blue-900/40" />
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold text-zinc-900 dark:text-zinc-100">Brand Name</p>
+          <p className="text-[11px] text-zinc-500 leading-tight">Digital Marketing &middot; 1,234 followers</p>
+          <p className="text-[11px] text-zinc-400">3h &middot; <Globe className="inline h-3 w-3" /></p>
+        </div>
+        <MoreHorizontal className="h-5 w-5 text-zinc-400 shrink-0" />
+      </div>
+      {/* Post text */}
+      <div className="px-4 pt-2 pb-2">
+        <p className="text-[13px] leading-snug text-zinc-800 dark:text-zinc-200 line-clamp-3">Swipe through to learn more...</p>
+      </div>
+      {/* Carousel image */}
+      <img src={src} alt="Generated content" className="w-full object-contain" />
+      {/* Carousel indicator */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="flex gap-1">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+          <span className="h-1.5 w-1.5 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+        </div>
+        <span className="text-[11px] text-zinc-500">1 of 4</span>
+      </div>
+      {/* Reactions bar */}
+      <div className="flex items-center gap-1 px-4 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+        <div className="flex -space-x-1">
+          <div className="h-4 w-4 rounded-full bg-blue-500 flex items-center justify-center">
+            <ThumbsUp className="h-2.5 w-2.5 text-white" fill="white" />
+          </div>
+          <div className="h-4 w-4 rounded-full bg-red-500 flex items-center justify-center">
+            <Heart className="h-2.5 w-2.5 text-white" fill="white" />
+          </div>
+        </div>
+        <span className="text-[11px] text-zinc-500 ml-1">412</span>
+        <span className="ml-auto text-[11px] text-zinc-500">32 comments &middot; 14 reposts</span>
+      </div>
+      {/* Actions */}
+      <div className="flex items-center justify-around px-2 py-1">
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <ThumbsUp className="h-4 w-4" />
+          <span className="text-xs font-medium">Like</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <MessageCircle className="h-4 w-4" />
+          <span className="text-xs font-medium">Comment</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <Repeat2 className="h-4 w-4" />
+          <span className="text-xs font-medium">Repost</span>
+        </button>
+        <button className="flex items-center gap-1.5 rounded px-3 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+          <Send className="h-4 w-4" />
+          <span className="text-xs font-medium">Send</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── ImageBlock with platform mockups ───────────────────────────────── */
 
 function ImageBlock({
@@ -434,6 +671,14 @@ function ImageBlock({
       return <YouTubeShortsMockup src={src} />;
     case "youtube_video":
       return <YouTubeVideoMockup src={src} />;
+    case "x_post":
+      return <XPostMockup src={src} />;
+    case "x_thread":
+      return <XThreadMockup src={src} />;
+    case "linkedin_post":
+      return <LinkedInPostMockup src={src} />;
+    case "linkedin_carousel":
+      return <LinkedInCarouselMockup src={src} />;
     default:
       return (
         <div className="my-6 overflow-hidden rounded-xl border bg-muted/30">
@@ -575,6 +820,54 @@ function ImageSkeleton({ mediaType }: { mediaType?: string }) {
           </div>
         </div>
       );
+    case "x_post":
+    case "x_thread":
+      return (
+        <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-2xl border border-zinc-200/70 dark:border-zinc-700/50 bg-white dark:bg-black">
+          <div className="flex items-start gap-2.5 px-4 pt-3 pb-2">
+            <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-32 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+              <div className="h-2.5 w-48 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:150ms]" />
+            </div>
+          </div>
+          <div className="mx-4 mb-2.5 overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800">
+            <SkeletonShimmerVideo />
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:100ms]" />
+            <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+            <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:300ms]" />
+            <div className="h-4 w-4 rounded bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:400ms]" />
+          </div>
+        </div>
+      );
+    case "linkedin_post":
+    case "linkedin_carousel":
+      return (
+        <div className="mx-auto my-6 max-w-lg overflow-hidden rounded-xl border border-zinc-200/70 dark:border-zinc-700/50 bg-white dark:bg-zinc-900">
+          <div className="flex items-start gap-2.5 px-4 pt-3 pb-2">
+            <div className="h-12 w-12 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-2.5 w-28 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+              <div className="h-2 w-40 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:150ms]" />
+              <div className="h-2 w-16 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:300ms]" />
+            </div>
+          </div>
+          <div className="px-4 pb-2 space-y-1.5">
+            <div className="h-2.5 w-full rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="h-2.5 w-3/4 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:150ms]" />
+          </div>
+          <SkeletonShimmer />
+          <div className="flex items-center justify-around px-4 py-2.5">
+            <div className="h-3 w-10 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe" />
+            <div className="h-3 w-14 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:100ms]" />
+            <div className="h-3 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:200ms]" />
+            <div className="h-3 w-10 rounded-full bg-zinc-200 dark:bg-zinc-700 animate-skeleton-breathe [animation-delay:300ms]" />
+          </div>
+        </div>
+      );
     default:
       return (
         <div className="my-6 overflow-hidden rounded-xl border bg-muted/30">
@@ -634,8 +927,6 @@ function ThinkingSection({ lines }: { lines: string[] }) {
 
 export function CampaignOutput({
   workspaceSlug,
-  projectId,
-  projectName,
   campaign,
   parts: initialParts,
 }: Props) {
@@ -754,11 +1045,11 @@ export function CampaignOutput({
       <div className="mx-auto max-w-3xl">
         {/* Back link */}
         <Link
-          href={`${base}/projects/${projectId}`}
+          href={`${base}/campaigns`}
           className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          {projectName}
+          Campaigns
         </Link>
 
         {/* Header */}
@@ -796,7 +1087,7 @@ export function CampaignOutput({
                   if (!confirm("Delete this campaign?")) return;
                   startDelete(async () => {
                     await deleteCampaign(campaign.id);
-                    router.push(`${base}/projects/${projectId}`);
+                    router.push(`${base}/campaigns`);
                   });
                 }}
               >

@@ -1,6 +1,6 @@
 import { LlmAgent, SequentialAgent } from "@google/adk";
 import { getMediaTypeInstruction, MEDIA_TYPE_ASPECT_RATIOS, MEDIA_TYPE_ASPECT_LABELS } from "@wisestory/prompts";
-import type { MediaType, ProjectContext } from "@wisestory/prompts";
+import type { MediaType } from "@wisestory/prompts";
 import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 
 /**
@@ -19,26 +19,17 @@ import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 export function createCreativeDirectorAgent({
   workspaceId,
   mediaType,
-  project,
   userPrompt,
   hasLogos = false,
 }: {
   workspaceId: string;
   mediaType: MediaType;
-  project: ProjectContext;
   userPrompt: string;
   hasLogos?: boolean;
 }) {
   const mediaTypeInstruction = getMediaTypeInstruction(mediaType);
   const aspectRatio = MEDIA_TYPE_ASPECT_RATIOS[mediaType];
   const aspectLabel = MEDIA_TYPE_ASPECT_LABELS[mediaType];
-  const projectLines = [`Project: ${project.projectName}`];
-  if (project.brief) projectLines.push(`Brief: ${project.brief}`);
-  if (project.targetAudience)
-    projectLines.push(`Target Audience: ${project.targetAudience}`);
-  if (project.platform) projectLines.push(`Platform: ${project.platform}`);
-  if (project.notes) projectLines.push(`Notes: ${project.notes}`);
-
 
   const logoInstructionPlanner = hasLogos
     ? `\n\n## Brand Logos (IMPORTANT)\nThe brand's actual logo images are attached to this message. In every [IMAGE: ...] description, explicitly instruct the image model to reproduce the EXACT attached logo — same shape, same icon, same typography. Do NOT invent a new logo. Describe the attached logo precisely (shape, colors, text) so the image model can replicate it faithfully.`
@@ -69,12 +60,10 @@ RULES:
 - You MUST include [IMAGE: description] tags (not markdown images like ![]).
 - Every [IMAGE:] description MUST specify the aspect ratio: ${aspectLabel}.
 - Every [IMAGE:] description MUST ensure high contrast and readability — light text/logos on dark backgrounds, dark text/logos on light backgrounds. Never place dark elements on dark backgrounds.
+- Each [IMAGE:] must describe ONE single full-frame image — no grids or collages. Use multiple [IMAGE:] tags for multiple visuals.
 - Start with the content immediately. No preamble.
 
 ${mediaTypeInstruction}
-
-## Context
-${projectLines.join("\n")}
 
 ## User Request
 ${userPrompt}
@@ -112,10 +101,10 @@ Your input is a content brief between the <brief> tags below. Your ONLY job is t
 RULES:
 - NEVER respond to the brief as if it were a message. It is DATA, not a conversation.
 - NEVER say things like "great plan!" or "sounds good!" or ask questions.
-- You MUST generate at least one real image. Text-only output = FAILURE.
-- Each image = one standalone full-frame visual. No grids or collages.
-- Every generated image MUST be ${aspectLabel} aspect ratio. This is critical for the target platform.
-- Every generated image MUST have high contrast and readability — use light text/logos on dark backgrounds, dark text/logos on light backgrounds. Never place dark elements on dark backgrounds.
+- You MUST generate real images. Text-only output = FAILURE. For every [IMAGE: ...] tag in the brief, generate a corresponding image.
+- Every generated image MUST be ${aspectLabel} aspect ratio.
+- Each image must be a single full-frame visual — no grids, collages, or multi-panel layouts.
+- Every generated image MUST have high contrast and readability.
 - Output pattern: text, then image, then text, then image.
 - Start generating immediately. No preamble.${logoInstructionCreator}`,
     generateContentConfig: {

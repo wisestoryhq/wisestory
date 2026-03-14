@@ -63,7 +63,6 @@ export async function GET(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       workspaceId: campaign.workspace.id,
-      projectId: campaign.projectId,
       mediaType: campaign.mediaType,
       prompt: campaign.prompt,
       campaignId: campaign.id,

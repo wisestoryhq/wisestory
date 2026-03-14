@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import Image from "next/image";
 import {
   LayoutDashboard,
-  FolderKanban,
+  Sparkles,
   HardDrive,
   Settings,
   LogOut,
@@ -38,7 +38,7 @@ export function WorkspaceSidebar({ workspace, user }: WorkspaceSidebarProps) {
 
   const navItems = [
     { href: base, label: "Dashboard", icon: LayoutDashboard, exact: true },
-    { href: `${base}/projects`, label: "Projects", icon: FolderKanban },
+    { href: `${base}/campaigns`, label: "Campaigns", icon: Sparkles },
     { href: `${base}/sources`, label: "Sources", icon: HardDrive },
     { href: `${base}/settings`, label: "Settings", icon: Settings },
   ];

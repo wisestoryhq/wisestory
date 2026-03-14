@@ -5,7 +5,7 @@ import { streamSSE } from "hono/streaming";
 import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
 import { createCreativeDirectorAgent } from "./agent.js";
 import { prisma } from "./db.js";
-import type { MediaType, ProjectContext } from "@wisestory/prompts";
+import type { MediaType } from "@wisestory/prompts";
 
 const app = new Hono();
 
@@ -14,31 +14,14 @@ app.use("/*", cors());
 app.get("/health", (c) => c.json({ status: "ok" }));
 
 /**
- * Shared helper: builds project context and creates the agent + runner.
+ * Shared helper: creates the agent + runner for a generation request.
  */
 async function buildRunner(body: {
   workspaceId: string;
-  projectId: string;
   mediaType: MediaType;
   prompt: string;
 }) {
-  const { workspaceId, projectId, mediaType, prompt } = body;
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-  });
-
-  if (!project || project.workspaceId !== workspaceId) {
-    throw new Error("Project not found");
-  }
-
-  const projectContext: ProjectContext = {
-    projectName: project.name,
-    brief: project.brief ?? undefined,
-    targetAudience: project.audience ?? undefined,
-    platform: project.platforms?.join(", ") ?? undefined,
-    notes: project.notes ?? undefined,
-  };
+  const { workspaceId, mediaType, prompt } = body;
 
   // Gemini vision supported image formats
   const SUPPORTED_IMAGE_TYPES = [
@@ -64,7 +47,6 @@ async function buildRunner(body: {
   const agent = createCreativeDirectorAgent({
     workspaceId,
     mediaType,
-    project: projectContext,
     userPrompt: prompt,
     hasLogos: logos.length > 0,
   });
@@ -114,15 +96,14 @@ async function buildRunner(body: {
 app.post("/generate/stream", async (c) => {
   const body = await c.req.json<{
     workspaceId: string;
-    projectId: string;
     mediaType: MediaType;
     prompt: string;
     campaignId: string;
   }>();
 
-  const { workspaceId, projectId, mediaType, prompt, campaignId } = body;
+  const { workspaceId, mediaType, prompt, campaignId } = body;
 
-  if (!workspaceId || !projectId || !mediaType || !prompt || !campaignId) {
+  if (!workspaceId || !mediaType || !prompt || !campaignId) {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
@@ -130,7 +111,6 @@ app.post("/generate/stream", async (c) => {
     try {
       const { runner, session, parts: messageParts } = await buildRunner({
         workspaceId,
-        projectId,
         mediaType,
         prompt,
       });
@@ -352,21 +332,19 @@ app.post("/generate/stream", async (c) => {
 app.post("/generate", async (c) => {
   const body = await c.req.json<{
     workspaceId: string;
-    projectId: string;
     mediaType: MediaType;
     prompt: string;
     campaignId?: string;
   }>();
 
-  const { workspaceId, projectId, mediaType, prompt } = body;
+  const { workspaceId, mediaType, prompt } = body;
 
-  if (!workspaceId || !projectId || !mediaType || !prompt) {
+  if (!workspaceId || !mediaType || !prompt) {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
   const { runner, session, parts: messageParts } = await buildRunner({
     workspaceId,
-    projectId,
     mediaType,
     prompt,
   });

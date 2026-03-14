@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 
 export type CreateCampaignInput = {
   workspaceSlug: string;
-  projectId: string;
   mediaType: string;
   prompt: string;
   instructions?: string;
@@ -39,14 +38,6 @@ export async function createCampaign(input: CreateCampaignInput) {
     throw new Error("Workspace not found");
   }
 
-  const project = await prisma.project.findFirst({
-    where: { id: input.projectId, workspaceId: workspace.id },
-  });
-
-  if (!project) {
-    throw new Error("Project not found");
-  }
-
   const campaign = await prisma.campaign.create({
     data: {
       mediaType: input.mediaType as never,
@@ -54,7 +45,6 @@ export async function createCampaign(input: CreateCampaignInput) {
       instructions: input.instructions || null,
       status: "generating",
       workspaceId: workspace.id,
-      projectId: input.projectId,
     },
   });
 

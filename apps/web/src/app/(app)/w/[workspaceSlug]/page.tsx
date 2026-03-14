@@ -28,7 +28,6 @@ export default async function WorkspacePage({
       description: true,
       _count: {
         select: {
-          projects: true,
           sourceConnections: true,
           campaigns: true,
         },
@@ -40,7 +39,11 @@ export default async function WorkspacePage({
     notFound();
   }
 
-  // Fetch recent campaigns with their project info
+  const completedCampaignCount = await prisma.campaign.count({
+    where: { workspaceId: workspace.id, status: "completed" },
+  });
+
+  // Fetch recent campaigns
   const recentCampaigns = await prisma.campaign.findMany({
     where: { workspaceId: workspace.id },
     orderBy: { createdAt: "desc" },
@@ -51,23 +54,6 @@ export default async function WorkspacePage({
       prompt: true,
       status: true,
       createdAt: true,
-      project: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
-
-  // Fetch projects for quick create
-  const projects = await prisma.project.findMany({
-    where: { workspaceId: workspace.id },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: {
-      id: true,
-      name: true,
     },
   });
 
@@ -78,9 +64,9 @@ export default async function WorkspacePage({
         name: workspace.name,
         slug: workspace.slug,
         description: workspace.description,
-        projectCount: workspace._count.projects,
         sourceCount: workspace._count.sourceConnections,
         campaignCount: workspace._count.campaigns,
+        completedCampaignCount,
       }}
       recentCampaigns={recentCampaigns.map((c) => ({
         id: c.id,
@@ -88,10 +74,7 @@ export default async function WorkspacePage({
         prompt: c.prompt,
         status: c.status,
         createdAt: c.createdAt.toISOString(),
-        projectId: c.project.id,
-        projectName: c.project.name,
       }))}
-      projects={projects}
     />
   );
 }

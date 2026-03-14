@@ -16,7 +16,6 @@ export interface Campaign {
   instructions: string | null;
   status: CampaignStatus;
   workspaceId: string;
-  projectId: string;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -4,7 +4,6 @@ import { CampaignOutput } from "./campaign-output";
 
 type Params = {
   workspaceSlug: string;
-  projectId: string;
   campaignId: string;
 };
 
@@ -13,7 +12,7 @@ export default async function CampaignPage({
 }: {
   params: Promise<Params>;
 }) {
-  const { workspaceSlug, projectId, campaignId } = await params;
+  const { workspaceSlug, campaignId } = await params;
 
   const workspace = await prisma.workspace.findUnique({
     where: { slug: workspaceSlug },
@@ -25,11 +24,9 @@ export default async function CampaignPage({
   const campaign = await prisma.campaign.findFirst({
     where: {
       id: campaignId,
-      projectId,
       workspaceId: workspace.id,
     },
     include: {
-      project: { select: { name: true } },
       outputs: {
         orderBy: { version: "desc" },
         take: 1,
@@ -45,8 +42,6 @@ export default async function CampaignPage({
   return (
     <CampaignOutput
       workspaceSlug={workspaceSlug}
-      projectId={projectId}
-      projectName={campaign.project.name}
       campaign={{
         id: campaign.id,
         mediaType: campaign.mediaType,

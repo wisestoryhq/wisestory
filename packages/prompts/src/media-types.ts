@@ -30,7 +30,7 @@ Create a complete carousel package with 5-8 slides:
 5. **Hashtags** — 8-15 relevant hashtags.
 
 ### Image Direction
-Each slide image should feel like part of a cohesive series — consistent color palette, typography style, and visual language derived from the brand guidelines. The cover must be scroll-stopping.`,
+IMPORTANT: Generate a separate image for EACH slide. These will be displayed as a swipeable carousel — each slide needs its own standalone image. Each slide image should feel like part of a cohesive series — consistent color palette, typography style, and visual language derived from the brand guidelines. The cover must be scroll-stopping.`,
 
   instagram_reel: `## Your Task: Instagram Reel
 
@@ -103,7 +103,64 @@ Create a complete long-form video script package:
 8. **Tags** — 10-15 relevant YouTube tags.
 
 ### Image Direction
-Section visuals should feel like key frames from a polished video. The thumbnail needs to pop — bold text, high contrast, and a clear subject. Match the brand's visual sophistication level.`,
+Each image must be a SINGLE standalone full-frame visual — never a grid, collage, or multi-panel layout. Section visuals should feel like key frames from a polished video. The thumbnail needs to pop — bold text, high contrast, and a clear subject. Match the brand's visual sophistication level.`,
+
+  x_post: `## Your Task: X Post
+
+Create a complete X (formerly Twitter) post package:
+
+1. **Tweet copy** — Write a compelling tweet within 280 characters. Make every word count. Use the brand's voice but adapted for X's fast, direct communication style. Include a clear hook in the first line.
+2. **Hero image** — Generate one striking hero image (16:9 landscape) that complements the tweet and drives engagement. Generate this image right after the tweet copy.
+3. **Alt text** — Write descriptive alt text for the image (for accessibility).
+4. **Hashtags** — 2-4 relevant hashtags (X favors fewer, more targeted hashtags than Instagram).
+5. **Thread potential** — One line suggesting how this post could be expanded into a thread if it gains traction.
+
+### Image Direction
+The hero image should be bold and high-contrast, optimized for timeline scroll. Use the brand's color palette and visual identity. X images display at 16:9 in the timeline — design for that crop. Text on the image should be minimal and large enough to read on mobile.`,
+
+  x_thread: `## Your Task: X Thread
+
+Create a complete X (formerly Twitter) thread package (5-10 tweets):
+
+1. **Hook tweet** — The first tweet must be a scroll-stopping hook that makes people want to read the full thread. This is critical for engagement.
+2. **Thread body** — For each subsequent tweet, provide:
+   - **Tweet number** — Position in the thread (2/8, 3/8, etc.)
+   - **Tweet copy** — The tweet text (max 280 characters each). Write in a conversational, authoritative tone.
+   - **Supporting image** — Generate an image for key tweets (at least 3 images across the thread). Generate each image right after the tweet that uses it.
+3. **Closing tweet** — The final tweet should include a clear CTA (follow, bookmark, share) and a brief summary of the thread's value.
+4. **Thread title image** — Generate a title card image for the first tweet that previews the thread topic.
+
+### Image Direction
+Thread images should feel like a cohesive visual series — consistent style, colors from the brand palette, and clear messaging. Each image should be able to stand alone while clearly belonging to the thread. Use 16:9 landscape format for all images.`,
+
+  linkedin_post: `## Your Task: LinkedIn Post
+
+Create a complete LinkedIn post package:
+
+1. **Post copy** — Write a professional, engaging LinkedIn post. Open with a strong hook line (this appears before "...see more"). Use short paragraphs and line breaks for scannability. Balance thought leadership with accessibility. Keep it under 1,300 characters for optimal engagement.
+2. **Hero image** — Generate one professional hero image (1.91:1 landscape) that complements the post and drives engagement in the LinkedIn feed. Generate this image right after the post copy.
+3. **Alt text** — Write descriptive alt text for the image.
+4. **Hashtags** — 3-5 relevant professional hashtags.
+5. **Engagement hook** — End with a question or CTA that encourages comments and discussion.
+
+### Image Direction
+The hero image should feel polished and professional without being corporate-generic. Use the brand's color palette and visual identity. LinkedIn images display at 1.91:1 in the feed — optimize for that crop. Avoid stock photo aesthetics; aim for distinctive, branded visuals.`,
+
+  linkedin_carousel: `## Your Task: LinkedIn Carousel (Document Post)
+
+Create a complete LinkedIn carousel package with 6-10 slides:
+
+1. **Post copy** — Write the accompanying post text with a hook that makes people want to swipe through the carousel. Include a CTA to save/share.
+2. **Slide-by-slide content** — For each slide, provide:
+   - **Slide headline** — Bold, concise text (this is the main content readers see)
+   - **Slide body** — Supporting text, data points, or key takeaways
+   - **Slide image** — Generate an image for each slide that matches the brand's visual style. Generate each image immediately after describing the slide.
+3. **Cover slide** — The first slide must have a compelling title that promises value. Generate a cover image.
+4. **CTA slide** — The final slide must include a clear call to action (follow, visit, comment). Generate a closing image.
+5. **Hashtags** — 3-5 relevant professional hashtags.
+
+### Image Direction
+IMPORTANT: Generate a separate image for EACH slide. These will be displayed as a swipeable carousel — each slide needs its own standalone image. Each slide should feel like part of a cohesive professional presentation — consistent color palette, clean typography style, and clear visual hierarchy derived from the brand guidelines. The cover must be compelling enough to make people start swiping. Use 1:1 square format for all slides.`,
 
   multi_platform_campaign: `## Your Task: Multi-Platform Campaign
 
