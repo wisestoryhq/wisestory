@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { deleteCampaign } from "@/app/actions/campaign";
+import { deleteCampaign, reopenBriefingChat } from "@/app/actions/campaign";
 import {
   ArrowLeft,
+  MessageSquare,
   Trash2,
 } from "lucide-react";
 
@@ -168,6 +169,7 @@ function renderInline(text: string): React.ReactNode {
 export function BriefingDocument({ workspaceSlug, campaign, parts }: Props) {
   const router = useRouter();
   const [isDeleting, startDelete] = useTransition();
+  const [isReopening, startReopen] = useTransition();
 
   const base = `/w/${workspaceSlug}`;
   const mediaLabel = MEDIA_TYPE_LABELS[campaign.mediaType] ?? campaign.mediaType;
@@ -208,6 +210,20 @@ export function BriefingDocument({ workspaceSlug, campaign, parts }: Props) {
               </Badge>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              startReopen(async () => {
+                await reopenBriefingChat(campaign.id);
+                router.refresh();
+              });
+            }}
+            disabled={isReopening}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <MessageSquare className="h-3.5 w-3.5" />
+          </Button>
           <Button
             variant="ghost"
             size="sm"
