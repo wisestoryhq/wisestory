@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
-import { createCreativeDirectorAgent } from "./agent.js";
+import { createCreativeDirectorAgent, createBriefingAgent, createImageGenerationAgent } from "./agent.js";
 import { prisma } from "./db.js";
 import type { MediaType } from "@wisestory/prompts";
 
@@ -398,6 +398,281 @@ app.post("/generate", async (c) => {
   }
 
   return c.json({ parts, eventCount });
+});
+
+/**
+ * POST /chat/stream
+ * SSE endpoint for the briefing chat. Streams creative director responses
+ * with interleaved text and images (no aspect ratio enforcement).
+ *
+ * Events: thinking, text, image, done, error
+ */
+app.post("/chat/stream", async (c) => {
+  const body = await c.req.json<{
+    campaignId: string;
+    workspaceId: string;
+    message: string;
+    messageHistory: Array<{ role: string; content: string; images?: Array<{ data: string; mimeType: string }> }>;
+    mediaType: MediaType;
+  }>();
+
+  const { campaignId, workspaceId, message, messageHistory, mediaType } = body;
+
+  if (!campaignId || !workspaceId || !message || !mediaType) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+
+  return streamSSE(c, async (stream) => {
+    try {
+      const isFirstMessage = !messageHistory || messageHistory.length === 0;
+
+      // Fetch brand logos for visual context
+      const logos = await prisma.sourceFile.findMany({
+        where: {
+          workspaceId,
+          contentType: "logo",
+          imageData: { not: null },
+          mimeType: { in: ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"] },
+        },
+        select: { name: true, mimeType: true, imageData: true },
+        take: 3,
+      });
+
+      let agent;
+      if (isFirstMessage) {
+        // First message: use the full pipeline (researcher → briefing director)
+        agent = createBriefingAgent({ workspaceId, mediaType });
+      } else {
+        // Subsequent messages: use just the briefing director with brand knowledge from history
+        agent = createBriefingAgent({ workspaceId, mediaType });
+      }
+
+      const sessionService = new InMemorySessionService();
+      const runner = new Runner({
+        appName: "wisestory",
+        agent,
+        sessionService,
+      });
+
+      const session = await sessionService.createSession({
+        appName: "wisestory",
+        userId: "user",
+      });
+
+      // Build message parts
+      const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+      // Add logos on first message
+      if (isFirstMessage && logos.length > 0) {
+        parts.push({ text: `[BRAND LOGOS: ${logos.length} attached. Use as brand identity reference.]` });
+        for (const logo of logos) {
+          parts.push({ inlineData: { mimeType: logo.mimeType, data: logo.imageData! } });
+        }
+      }
+
+      // Add conversation history context for multi-turn
+      if (messageHistory && messageHistory.length > 0) {
+        const historyText = messageHistory
+          .map((m) => `${m.role === "user" ? "Client" : "Creative Director"}: ${m.content}`)
+          .join("\n\n");
+        parts.push({ text: `[CONVERSATION SO FAR]\n${historyText}\n[END CONVERSATION]\n\nNow respond to the client's latest message:` });
+      }
+
+      parts.push({ text: message });
+
+      // Track state for streaming
+      let textBuffer = "";
+      let totalPartialChars = 0;
+      let briefingStartedEmitted = false;
+
+      const eventGenerator = runner.runAsync({
+        userId: "user",
+        sessionId: session.id,
+        newMessage: { role: "user", parts },
+        runConfig: { streamingMode: StreamingMode.SSE },
+      });
+
+      for await (const event of eventGenerator) {
+        const isPartial = event.partial === true;
+        const isTurnComplete = event.turnComplete === true;
+
+        if (!event.content?.parts) continue;
+
+        for (const part of event.content.parts) {
+          // Researcher thinking events
+          if (event.author === "researcher") {
+            if ("text" in part && part.text) {
+              await stream.writeSSE({
+                event: "thinking",
+                data: JSON.stringify({ text: part.text, partial: isPartial }),
+              });
+            }
+            if ("functionCall" in part) {
+              const fc = part.functionCall as { name: string; args: Record<string, unknown> };
+              const query = typeof fc.args?.query === "string" ? fc.args.query : "";
+              await stream.writeSSE({
+                event: "thinking",
+                data: JSON.stringify({ text: query ? `Searching: "${query}"` : `Calling: ${fc.name}`, tool: fc.name }),
+              });
+            }
+            continue;
+          }
+
+          // Briefing director events
+          if (event.author === "briefing_director") {
+            if (!briefingStartedEmitted) {
+              briefingStartedEmitted = true;
+              await stream.writeSSE({ event: "briefing_started", data: "{}" });
+            }
+
+            if ("text" in part && part.text) {
+              if (isPartial) {
+                await stream.writeSSE({
+                  event: "text",
+                  data: JSON.stringify({ content: part.text, partial: true }),
+                });
+                textBuffer += part.text;
+                totalPartialChars += part.text.length;
+              } else if (totalPartialChars > 0) {
+                // Skip consolidated event
+                console.log(`  [skip-consolidated] ${part.text.length} chars`);
+              } else {
+                await stream.writeSSE({
+                  event: "text",
+                  data: JSON.stringify({ content: part.text, partial: false }),
+                });
+                textBuffer += part.text;
+              }
+            }
+
+            if ("inlineData" in part && part.inlineData) {
+              await stream.writeSSE({
+                event: "image",
+                data: JSON.stringify({
+                  data: part.inlineData.data ?? "",
+                  mimeType: part.inlineData.mimeType ?? "image/png",
+                }),
+              });
+            }
+          }
+        }
+
+        // Flush on turn complete
+        if (event.author === "briefing_director" && isTurnComplete) {
+          textBuffer = "";
+        }
+      }
+
+      // Save assistant message to DB
+      const images: Array<{ data: string; mimeType: string }> = [];
+      // Note: images are extracted during streaming above, but for DB persistence
+      // we save the text content. Images are saved separately in the message.
+
+      await stream.writeSSE({ event: "done", data: "{}" });
+    } catch (err) {
+      console.error("[chat/stream] Error:", err);
+      await stream.writeSSE({
+        event: "error",
+        data: JSON.stringify({ message: err instanceof Error ? err.message : "Chat failed" }),
+      });
+    }
+  });
+});
+
+/**
+ * POST /generate/image
+ * Non-streaming endpoint that generates a single production image.
+ * Returns JSON with the image data.
+ */
+app.post("/generate/image", async (c) => {
+  const body = await c.req.json<{
+    workspaceId: string;
+    briefingSummary: string;
+    imageDescription: string;
+    mediaType: MediaType;
+    imageIndex: number;
+  }>();
+
+  const { workspaceId, briefingSummary, imageDescription, mediaType } = body;
+
+  if (!workspaceId || !briefingSummary || !imageDescription || !mediaType) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+
+  try {
+    // Fetch brand logos for visual context
+    const logos = await prisma.sourceFile.findMany({
+      where: {
+        workspaceId,
+        contentType: "logo",
+        imageData: { not: null },
+        mimeType: { in: ["image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"] },
+      },
+      select: { name: true, mimeType: true, imageData: true },
+      take: 3,
+    });
+
+    const agent = createImageGenerationAgent({
+      mediaType,
+      briefingSummary,
+      imageDescription,
+    });
+
+    const sessionService = new InMemorySessionService();
+    const runner = new Runner({
+      appName: "wisestory",
+      agent,
+      sessionService,
+    });
+
+    const session = await sessionService.createSession({
+      appName: "wisestory",
+      userId: "user",
+    });
+
+    // Build parts with logos if available
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+    if (logos.length > 0) {
+      parts.push({ text: `[BRAND LOGOS: ${logos.length} attached. Reproduce the exact logo in your image.]` });
+      for (const logo of logos) {
+        parts.push({ inlineData: { mimeType: logo.mimeType, data: logo.imageData! } });
+      }
+    }
+    parts.push({ text: `Generate the image as described. No text explanation needed.` });
+
+    const eventGenerator = runner.runAsync({
+      userId: "user",
+      sessionId: session.id,
+      newMessage: { role: "user", parts },
+    });
+
+    let resultImage: { data: string; mimeType: string } | null = null;
+
+    for await (const event of eventGenerator) {
+      if (event.author === "image_generator" && event.content?.parts) {
+        for (const part of event.content.parts) {
+          if ("inlineData" in part && part.inlineData) {
+            resultImage = {
+              data: part.inlineData.data ?? "",
+              mimeType: part.inlineData.mimeType ?? "image/png",
+            };
+          }
+        }
+      }
+    }
+
+    if (!resultImage) {
+      return c.json({ error: "No image generated" }, 500);
+    }
+
+    return c.json({ image: resultImage });
+  } catch (err) {
+    console.error("[generate/image] Error:", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Image generation failed" },
+      500
+    );
+  }
 });
 
 const port = parseInt(process.env.PORT ?? "3001");

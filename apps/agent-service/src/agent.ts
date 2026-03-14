@@ -1,5 +1,11 @@
 import { LlmAgent, SequentialAgent } from "@google/adk";
-import { getMediaTypeInstruction, MEDIA_TYPE_ASPECT_RATIOS, MEDIA_TYPE_ASPECT_LABELS } from "@wisestory/prompts";
+import {
+  getMediaTypeInstruction,
+  MEDIA_TYPE_ASPECT_RATIOS,
+  MEDIA_TYPE_ASPECT_LABELS,
+  BRIEFING_DIRECTOR_INSTRUCTION,
+  IMAGE_GENERATION_INSTRUCTION,
+} from "@wisestory/prompts";
 import type { MediaType } from "@wisestory/prompts";
 import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
 
@@ -102,5 +108,89 @@ Start creating immediately. Write the content and generate images inline.`,
     description:
       "Retrieves brand knowledge then generates interleaved text + image content.",
     subAgents: [researcherAgent, creatorAgent],
+  });
+}
+
+/**
+ * Creates a briefing agent for the conversational creative director chat.
+ * Uses gemini-2.5-flash-image with TEXT+IMAGE modalities but NO aspect ratio enforcement.
+ */
+export function createBriefingAgent({
+  workspaceId,
+  mediaType,
+}: {
+  workspaceId: string;
+  mediaType: MediaType;
+}) {
+  const retrieveKnowledge = createRetrieveKnowledgeTool(workspaceId);
+
+  const researcherAgent = new LlmAgent({
+    name: "researcher",
+    model: "gemini-2.5-flash",
+    description: "Retrieves brand knowledge from the workspace knowledge base.",
+    instruction: `You are a research assistant. Your ONLY job is to retrieve brand knowledge and output it.
+
+Call retrieve_knowledge with these queries (one call per query):
+  - "brand voice and tone guidelines"
+  - "visual identity, colors, and design style"
+  - "target audience and brand positioning"
+
+Output a concise summary organized as:
+- **Voice & Tone**: [key points]
+- **Visual Style**: [colors, fonts, imagery style]
+- **Target Audience**: [who they are]
+
+ONLY retrieve and summarize knowledge. Do NOT write content.`,
+    tools: [retrieveKnowledge],
+    outputKey: "brand_knowledge",
+  });
+
+  const briefingAgent = new LlmAgent({
+    name: "briefing_director",
+    model: "gemini-2.5-flash-image",
+    description: "Creative director for collaborative briefing conversations.",
+    instruction: BRIEFING_DIRECTOR_INSTRUCTION.replace("{mediaType}", mediaType),
+    generateContentConfig: {
+      responseModalities: ["TEXT", "IMAGE"],
+    },
+  });
+
+  return new SequentialAgent({
+    name: "briefing_pipeline",
+    description: "Retrieves brand knowledge then starts briefing conversation.",
+    subAgents: [researcherAgent, briefingAgent],
+  });
+}
+
+/**
+ * Creates a single-image generation agent for the final production phase.
+ * Uses gemini-2.5-flash-image with enforced aspect ratio.
+ */
+export function createImageGenerationAgent({
+  mediaType,
+  briefingSummary,
+  imageDescription,
+}: {
+  mediaType: MediaType;
+  briefingSummary: string;
+  imageDescription: string;
+}) {
+  const aspectRatio = MEDIA_TYPE_ASPECT_RATIOS[mediaType];
+  const aspectLabel = MEDIA_TYPE_ASPECT_LABELS[mediaType];
+
+  return new LlmAgent({
+    name: "image_generator",
+    model: "gemini-2.5-flash-image",
+    description: "Generates a single production-quality image.",
+    instruction: IMAGE_GENERATION_INSTRUCTION
+      .replace("{briefingSummary}", briefingSummary)
+      .replace("{imageDescription}", imageDescription)
+      .replace("{aspectRatio}", aspectLabel),
+    generateContentConfig: {
+      responseModalities: ["TEXT", "IMAGE"],
+      imageConfig: {
+        aspectRatio: aspectRatio,
+      },
+    },
   });
 }
