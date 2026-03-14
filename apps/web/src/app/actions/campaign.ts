@@ -82,6 +82,34 @@ export async function generateBriefingDoc(
 }
 
 /**
+ * Marks a campaign as done generating. Called by the client after the
+ * briefing SSE stream emits its "done" event, so the page can transition
+ * to the completed view without a race condition.
+ */
+export async function completeBriefingGeneration(campaignId: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session) redirect("/login");
+
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      id: campaignId,
+      workspace: { members: { some: { userId: session.user.id } } },
+    },
+  });
+  if (!campaign) throw new Error("Campaign not found");
+
+  // Only transition if still generating — idempotent
+  if (campaign.status === "generating_doc") {
+    await prisma.campaign.update({
+      where: { id: campaignId },
+      data: { status: "draft" },
+    });
+  }
+}
+
+/**
  * Loads the message history for a campaign.
  */
 export async function getCampaignMessages(campaignId: string) {
@@ -101,6 +129,30 @@ export async function getCampaignMessages(campaignId: string) {
   return prisma.campaignMessage.findMany({
     where: { campaignId },
     orderBy: { createdAt: "asc" },
+  });
+}
+
+/**
+ * Resets a campaign back to the briefing chat phase so the user
+ * can continue the conversation after viewing the generated document.
+ */
+export async function reopenBriefingChat(campaignId: string) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session) redirect("/login");
+
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      id: campaignId,
+      workspace: { members: { some: { userId: session.user.id } } },
+    },
+  });
+  if (!campaign) throw new Error("Campaign not found");
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { status: "briefing" },
   });
 }
 
