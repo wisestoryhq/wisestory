@@ -211,48 +211,25 @@ export function createImageGenerationAgent({
 
 /**
  * Creates a caption generation agent that produces post copy + hashtags.
+ * Single LlmAgent — the briefing summary already contains brand context
+ * from the briefing chat phase, no need for a researcher step.
  */
 export function createCaptionAgent({
-  workspaceId,
   mediaType,
   briefingSummary,
 }: {
-  workspaceId: string;
   mediaType: MediaType;
   briefingSummary: string;
 }) {
-  const retrieveKnowledge = createRetrieveKnowledgeTool(workspaceId);
   const mediaLabel = MEDIA_TYPE_LABELS[mediaType];
 
-  const researcherAgent = new LlmAgent({
-    name: "researcher",
-    model: "gemini-2.5-flash",
-    description: "Retrieves brand knowledge for caption writing.",
-    instruction: `You are a research assistant. Retrieve brand knowledge for caption writing.
-
-Call retrieve_knowledge with these queries:
-  - "brand voice and tone guidelines"
-  - "target audience and brand positioning"
-
-Output a concise summary of brand voice, tone, and target audience.
-ONLY retrieve and summarize. Do NOT write captions.`,
-    tools: [retrieveKnowledge],
-    outputKey: "brand_knowledge",
-  });
-
-  const captionAgent = new LlmAgent({
+  return new LlmAgent({
     name: "caption_writer",
     model: "gemini-2.5-flash",
     description: "Writes post caption and hashtags.",
     instruction: CAPTION_GENERATION_INSTRUCTION
       .replace("{briefingSummary}", briefingSummary)
       .replace("{mediaType}", mediaLabel)
-      .replace("{brandKnowledge}", "{brand_knowledge}"),
-  });
-
-  return new SequentialAgent({
-    name: "caption_pipeline",
-    description: "Retrieves brand knowledge then writes caption + hashtags.",
-    subAgents: [researcherAgent, captionAgent],
+      .replace("{brandKnowledge}", briefingSummary),
   });
 }

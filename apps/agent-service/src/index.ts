@@ -744,15 +744,14 @@ app.post("/generate/caption", async (c) => {
     mediaType: MediaType;
   }>();
 
-  const { workspaceId, briefingSummary, mediaType } = body;
+  const { briefingSummary, mediaType } = body;
 
-  if (!workspaceId || !briefingSummary || !mediaType) {
+  if (!briefingSummary || !mediaType) {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
   try {
     const agent = createCaptionAgent({
-      workspaceId,
       mediaType,
       briefingSummary,
     });
@@ -774,14 +773,14 @@ app.post("/generate/caption", async (c) => {
       sessionId: session.id,
       newMessage: {
         role: "user",
-        parts: [{ text: `Write the caption and hashtags for this ${mediaType} campaign. Follow the briefing closely.` }],
+        parts: [{ text: `Here is the briefing for the campaign:\n\n${briefingSummary}\n\nWrite the caption and hashtags now. Do NOT ask for more information — use the briefing above.` }],
       },
     });
 
     let captionText = "";
 
     for await (const event of eventGenerator) {
-      if (event.content?.parts) {
+      if (event.author === "caption_writer" && event.content?.parts) {
         for (const part of event.content.parts) {
           if ("text" in part && part.text) {
             captionText += part.text;
