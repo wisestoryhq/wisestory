@@ -58,6 +58,7 @@ enum SourceFileStatus {
 
 enum CampaignStatus {
   draft
+  briefing
   generating
   completed
   failed
@@ -261,22 +262,41 @@ model KnowledgeChunk {
 // ─── Campaign ───────────────────────────────────────────────────────
 
 model Campaign {
-  id           String         @id @default(cuid())
-  mediaType    MediaType
-  prompt       String
-  instructions String?
-  status       CampaignStatus @default(draft)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id              String         @id @default(cuid())
+  mediaType       MediaType
+  prompt          String
+  instructions    String?
+  briefingSummary String?
+  status          CampaignStatus @default(draft)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   outputs              CampaignOutput[]
+  messages             CampaignMessage[]
   generationSourceRefs GenerationSourceRef[]
 
   @@index([workspaceId])
   @@map("campaigns")
+}
+
+// ─── Campaign Message ────────────────────────────────────────────────
+
+model CampaignMessage {
+  id        String   @id @default(cuid())
+  role      String   // "user" | "assistant"
+  content   String
+  images    Json?    // [{data: string, mimeType: string}]
+  metadata  Json?    // thinking steps, sources, etc.
+  createdAt DateTime @default(now())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("campaign_messages")
 }
 
 // ─── Campaign Output ────────────────────────────────────────────────
