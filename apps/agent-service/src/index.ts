@@ -263,6 +263,19 @@ app.post("/briefing/generate", async (c) => {
         orderBy: { createdAt: "asc" },
       });
 
+      // Collect user-explicit rejected image data so we can exclude
+      // auto-extracted liked_image nodes the user actually disliked
+      const rejectedImageData = new Set<string>();
+      for (const node of nodes) {
+        if (
+          node.nodeType === "rejected_option" &&
+          node.imageData &&
+          (node.metadata as Record<string, unknown>)?.ratingSource === "user_explicit"
+        ) {
+          rejectedImageData.add(node.imageData);
+        }
+      }
+
       // Build structured summary from graph
       let graphSummary = "";
 
@@ -289,6 +302,10 @@ app.post("/briefing/generate", async (c) => {
           const label = sectionLabels[nodeType] ?? nodeType;
           graphSummary += `\n### ${label}\n`;
           for (const node of sectionNodes) {
+            // Skip auto-extracted liked_image nodes that the user explicitly rejected
+            if (nodeType === "liked_image" && node.imageData && rejectedImageData.has(node.imageData)) {
+              continue;
+            }
             graphSummary += `- **${node.title}**: ${node.content}\n`;
             for (const edge of node.outgoingEdges) {
               graphSummary += `  → ${edge.relationshipType} "${edge.target.title}"\n`;
@@ -327,10 +344,15 @@ app.post("/briefing/generate", async (c) => {
         }
       }
 
-      // Collect liked images from graph nodes
+      // Collect liked images, excluding any that the user explicitly rejected
       const likedImages: Array<{ data: string; mimeType: string }> = [];
       for (const node of nodes) {
-        if (node.nodeType === "liked_image" && node.imageData && node.imageMimeType) {
+        if (
+          node.nodeType === "liked_image" &&
+          node.imageData &&
+          node.imageMimeType &&
+          !rejectedImageData.has(node.imageData)
+        ) {
           likedImages.push({ data: node.imageData, mimeType: node.imageMimeType });
         }
       }
