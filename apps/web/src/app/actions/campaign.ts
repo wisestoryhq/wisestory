@@ -83,8 +83,7 @@ export async function saveUserMessage(campaignId: string, content: string) {
 export async function saveAssistantMessage(
   campaignId: string,
   content: string,
-  images?: Array<{ data: string; mimeType: string }>,
-  metadata?: Record<string, unknown>
+  images?: Array<{ data: string; mimeType: string }>
 ) {
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -96,8 +95,7 @@ export async function saveAssistantMessage(
       campaignId,
       role: "assistant",
       content,
-      images: images && images.length > 0 ? images : undefined,
-      metadata: metadata ?? undefined,
+      images: images && images.length > 0 ? (images as unknown as import("@wisestory/db").Prisma.InputJsonValue) : undefined,
     },
   });
 }

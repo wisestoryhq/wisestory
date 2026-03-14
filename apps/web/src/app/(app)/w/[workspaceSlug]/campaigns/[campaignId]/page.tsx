@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { CampaignOutput } from "./campaign-output";
+import { CreativeArea } from "./creative-area";
 
 type Params = {
   workspaceSlug: string;
@@ -31,11 +32,41 @@ export default async function CampaignPage({
         orderBy: { version: "desc" },
         take: 1,
       },
+      messages: {
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
   if (!campaign) notFound();
 
+  // Briefing phase: show the creative area with chat
+  if (campaign.status === "briefing" || campaign.status === "generating") {
+    const messages = campaign.messages.map((m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant",
+      content: m.content,
+      images: (m.images as Array<{ data: string; mimeType: string }>) ?? [],
+      createdAt: m.createdAt.toISOString(),
+    }));
+
+    return (
+      <CreativeArea
+        workspaceSlug={workspaceSlug}
+        campaign={{
+          id: campaign.id,
+          mediaType: campaign.mediaType,
+          prompt: campaign.prompt,
+          status: campaign.status,
+          briefingSummary: campaign.briefingSummary ?? null,
+          workspaceId: workspace.id,
+        }}
+        initialMessages={messages}
+      />
+    );
+  }
+
+  // Completed/failed/draft: show the existing campaign output
   const output = campaign.outputs[0];
   const parts = (output?.parts as Array<Record<string, string>>) ?? [];
 
