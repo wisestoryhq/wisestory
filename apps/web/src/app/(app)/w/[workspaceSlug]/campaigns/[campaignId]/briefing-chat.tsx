@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { generateBriefingDoc } from "@/app/actions/campaign";
 import { ChatMessage } from "./chat-message";
+import { BriefingGraph } from "./briefing-graph";
 import {
   ArrowLeft,
   ArrowUp,
   CheckCircle2,
   Loader2,
+  Network,
 } from "lucide-react";
 
 const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -59,6 +61,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   const [isApproving, setIsApproving] = useState(false);
   const [thinkingText, setThinkingText] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showGraph, setShowGraph] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -275,19 +278,30 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
           </p>
         </div>
         {hasAssistantResponse && !isStreaming && (
-          <Button
-            size="sm"
-            onClick={handleGenerateBriefing}
-            disabled={isApproving}
-            className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
-          >
-            {isApproving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-3.5 w-3.5" />
-            )}
-            Generate Briefing
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowGraph(true)}
+              className="gap-1.5"
+            >
+              <Network className="h-3.5 w-3.5" />
+              Graph
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleGenerateBriefing}
+              disabled={isApproving}
+              className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
+            >
+              {isApproving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              )}
+              Generate Briefing
+            </Button>
+          </div>
         )}
       </div>
 
@@ -366,6 +380,14 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
           </div>
         </form>
       </div>
+
+      {/* Knowledge Graph Overlay */}
+      {showGraph && (
+        <BriefingGraph
+          campaignId={campaign.id}
+          onClose={() => setShowGraph(false)}
+        />
+      )}
     </div>
   );
 }
