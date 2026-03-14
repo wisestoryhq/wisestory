@@ -148,6 +148,8 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         },
       ]);
 
+      let currentEvent = "";
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -158,59 +160,59 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
 
         for (const line of lines) {
           if (line.startsWith("event: ")) {
-            const eventType = line.slice(7).trim();
-            const nextLine = lines[lines.indexOf(line) + 1];
-            if (!nextLine?.startsWith("data: ")) continue;
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && currentEvent) {
+            try {
+              const data = JSON.parse(line.slice(6));
 
-            const data = JSON.parse(nextLine.slice(6));
+              switch (currentEvent) {
+                case "thinking":
+                  setThinkingText(data.text || "Researching...");
+                  break;
 
-            switch (eventType) {
-              case "thinking":
-                setThinkingText(data.text || "Researching...");
-                break;
+                case "briefing_started":
+                  setThinkingText(null);
+                  break;
 
-              case "briefing_started":
-                setThinkingText(null);
-                break;
+                case "text":
+                  assistantContent += data.content;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, content: assistantContent }
+                        : m
+                    )
+                  );
+                  break;
 
-              case "text":
-                assistantContent += data.content;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMsgId
-                      ? { ...m, content: assistantContent }
-                      : m
-                  )
-                );
-                break;
+                case "image":
+                  assistantImages.push({
+                    data: data.data,
+                    mimeType: data.mimeType,
+                  });
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, images: [...assistantImages] }
+                        : m
+                    )
+                  );
+                  break;
 
-              case "image":
-                assistantImages.push({
-                  data: data.data,
-                  mimeType: data.mimeType,
-                });
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === assistantMsgId
-                      ? { ...m, images: [...assistantImages] }
-                      : m
-                  )
-                );
-                break;
+                case "done":
+                  break;
 
-              case "done":
-                break;
-
-              case "error":
-                setError(data.message || "Something went wrong");
-                break;
+                case "error":
+                  setError(data.message || "Something went wrong");
+                  break;
+              }
+            } catch {
+              // Skip malformed JSON
             }
+            currentEvent = "";
+          } else if (line.trim() === "") {
+            currentEvent = "";
           }
-        }
-
-        // Handle remaining buffer for SSE parsing
-        if (buffer.startsWith("event: ")) {
-          // Will be processed on next read
         }
       }
 
