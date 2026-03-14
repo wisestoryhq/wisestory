@@ -277,32 +277,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             {MEDIA_TYPE_LABELS[campaign.mediaType] ?? campaign.mediaType}
           </p>
         </div>
-        {hasAssistantResponse && !isStreaming && (
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowGraph(true)}
-              className="gap-1.5"
-            >
-              <Network className="h-3.5 w-3.5" />
-              Graph
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleGenerateBriefing}
-              disabled={isApproving}
-              className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
-            >
-              {isApproving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              )}
-              Generate Briefing
-            </Button>
-          </div>
-        )}
+        {/* intentionally empty — actions moved to input area */}
       </div>
 
       {/* Messages */}
@@ -335,50 +310,76 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         </div>
       </div>
 
-      {/* Input */}
+      {/* Input + Actions */}
       <div className="border-t px-6 py-4">
-        <form onSubmit={handleSubmit} className="mx-auto max-w-2xl">
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                messages.length > 0
-                  ? "Continue the conversation..."
-                  : "Describe your content idea..."
-              }
-              disabled={isStreaming}
-              className={cn(
-                "w-full rounded-xl border bg-background px-4 py-3 pr-12 text-sm",
-                "placeholder:text-muted-foreground/60",
-                "focus:outline-none focus:ring-2 focus:ring-[#f6b900]/30 focus:border-[#f6b900]/40",
-                "disabled:opacity-50",
-                "transition-all duration-200"
-              )}
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isStreaming}
-              className={cn(
-                "absolute right-2 top-1/2 -translate-y-1/2",
-                "flex h-8 w-8 items-center justify-center rounded-lg",
-                "transition-all duration-200",
-                input.trim() && !isStreaming
-                  ? "bg-[#f6b900] text-white hover:bg-[#e0a800]"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              {isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-            </button>
-          </div>
-        </form>
+        <div className="mx-auto max-w-2xl space-y-2">
+          <form onSubmit={handleSubmit}>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={
+                  messages.length > 0
+                    ? "Continue the conversation..."
+                    : "Describe your content idea..."
+                }
+                disabled={isStreaming}
+                className={cn(
+                  "w-full rounded-xl border bg-background px-4 py-3 pr-12 text-sm",
+                  "placeholder:text-muted-foreground/60",
+                  "focus:outline-none focus:ring-2 focus:ring-[#f6b900]/30 focus:border-[#f6b900]/40",
+                  "disabled:opacity-50",
+                  "transition-all duration-200"
+                )}
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isStreaming}
+                className={cn(
+                  "absolute right-2 top-1/2 -translate-y-1/2",
+                  "flex h-8 w-8 items-center justify-center rounded-lg",
+                  "transition-all duration-200",
+                  input.trim() && !isStreaming
+                    ? "bg-[#f6b900] text-white hover:bg-[#e0a800]"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {isStreaming ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ArrowUp className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </form>
+          {hasAssistantResponse && !isStreaming && (
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setShowGraph(true)}
+                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Network className="h-3.5 w-3.5" />
+                View Graph
+              </button>
+              <Button
+                size="sm"
+                onClick={handleGenerateBriefing}
+                disabled={isApproving}
+                className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
+              >
+                {isApproving ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                Generate Briefing
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Knowledge Graph Overlay */}
