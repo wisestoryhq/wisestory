@@ -13,5 +13,8 @@
     "turbo": "^2",
     "vitest": "^4.0.18"
   },
-  "packageManager": "pnpm@10.20.0"
+  "packageManager": "pnpm@10.20.0",
+  "dependencies": {
+    "tsx": "^4.21.0"
+  }
 }
