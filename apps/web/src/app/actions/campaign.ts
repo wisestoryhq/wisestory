@@ -176,7 +176,7 @@ export async function generateFinalImage(
   const response = await fetch(`${agentUrl}/generate/image`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(imageSpec),
+    body: JSON.stringify({ ...imageSpec, campaignId }),
   });
 
   if (!response.ok) {
@@ -186,6 +186,36 @@ export async function generateFinalImage(
 
   const result = await response.json();
   return result as { image: { data: string; mimeType: string } };
+}
+
+/**
+ * Generates a caption + hashtags via the agent service.
+ */
+export async function generateCaption(
+  workspaceId: string,
+  briefingSummary: string,
+  mediaType: string
+) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session) redirect("/login");
+
+  const agentUrl = process.env.AGENT_SERVICE_URL ?? "http://localhost:3001";
+
+  const response = await fetch(`${agentUrl}/generate/caption`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId, briefingSummary, mediaType }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(err.error || "Caption generation failed");
+  }
+
+  const result = await response.json();
+  return result as { caption: string };
 }
 
 /**

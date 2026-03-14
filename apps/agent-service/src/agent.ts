@@ -3,8 +3,10 @@ import {
   getMediaTypeInstruction,
   MEDIA_TYPE_ASPECT_RATIOS,
   MEDIA_TYPE_ASPECT_LABELS,
+  MEDIA_TYPE_LABELS,
   BRIEFING_DIRECTOR_INSTRUCTION,
   IMAGE_GENERATION_INSTRUCTION,
+  CAPTION_GENERATION_INSTRUCTION,
 } from "@wisestory/prompts";
 import type { MediaType } from "@wisestory/prompts";
 import { createRetrieveKnowledgeTool } from "./tools/retrieve-knowledge.js";
@@ -174,7 +176,9 @@ ONLY retrieve and summarize knowledge. Do NOT write content.`,
 
 /**
  * Creates a single-image generation agent for the final production phase.
- * Uses gemini-2.5-flash-image with enforced aspect ratio.
+ * Single LlmAgent — no researcher step needed because the briefing summary
+ * already contains brand context from the briefing chat phase.
+ * Concept images from the briefing are passed as inline data in the user message.
  */
 export function createImageGenerationAgent({
   mediaType,
@@ -202,5 +206,53 @@ export function createImageGenerationAgent({
         aspectRatio: aspectRatio,
       },
     },
+  });
+}
+
+/**
+ * Creates a caption generation agent that produces post copy + hashtags.
+ */
+export function createCaptionAgent({
+  workspaceId,
+  mediaType,
+  briefingSummary,
+}: {
+  workspaceId: string;
+  mediaType: MediaType;
+  briefingSummary: string;
+}) {
+  const retrieveKnowledge = createRetrieveKnowledgeTool(workspaceId);
+  const mediaLabel = MEDIA_TYPE_LABELS[mediaType];
+
+  const researcherAgent = new LlmAgent({
+    name: "researcher",
+    model: "gemini-2.5-flash",
+    description: "Retrieves brand knowledge for caption writing.",
+    instruction: `You are a research assistant. Retrieve brand knowledge for caption writing.
+
+Call retrieve_knowledge with these queries:
+  - "brand voice and tone guidelines"
+  - "target audience and brand positioning"
+
+Output a concise summary of brand voice, tone, and target audience.
+ONLY retrieve and summarize. Do NOT write captions.`,
+    tools: [retrieveKnowledge],
+    outputKey: "brand_knowledge",
+  });
+
+  const captionAgent = new LlmAgent({
+    name: "caption_writer",
+    model: "gemini-2.5-flash",
+    description: "Writes post caption and hashtags.",
+    instruction: CAPTION_GENERATION_INSTRUCTION
+      .replace("{briefingSummary}", briefingSummary)
+      .replace("{mediaType}", mediaLabel)
+      .replace("{brandKnowledge}", "{brand_knowledge}"),
+  });
+
+  return new SequentialAgent({
+    name: "caption_pipeline",
+    description: "Retrieves brand knowledge then writes caption + hashtags.",
+    subAgents: [researcherAgent, captionAgent],
   });
 }

@@ -5,11 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  saveUserMessage,
-  saveAssistantMessage,
-  approveBriefing,
-} from "@/app/actions/campaign";
+import { approveBriefing } from "@/app/actions/campaign";
 import { ChatMessage } from "./chat-message";
 import {
   ArrowLeft,
@@ -66,6 +62,9 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Ref-based guard to prevent React strict mode double-fire
+  const isStreamingRef = useRef(false);
+  const hasSentInitialRef = useRef(false);
 
   const base = `/w/${workspaceSlug}`;
 
@@ -76,15 +75,22 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
 
   // Auto-send the initial prompt as first message if no messages exist
   useEffect(() => {
-    if (initialMessages.length === 0 && campaign.prompt) {
+    if (
+      !hasSentInitialRef.current &&
+      initialMessages.length === 0 &&
+      campaign.prompt
+    ) {
+      hasSentInitialRef.current = true;
       sendMessage(campaign.prompt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sendMessage = useCallback(async (messageText: string) => {
-    if (!messageText.trim() || isStreaming) return;
+    if (!messageText.trim() || isStreamingRef.current) return;
 
+    // Use ref for immediate guard (not batched like setState)
+    isStreamingRef.current = true;
     setError(null);
     setIsStreaming(true);
     setThinkingText(null);
@@ -99,10 +105,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     };
     setMessages((prev) => [...prev, userMsg]);
 
-    // Save user message to DB
-    saveUserMessage(campaign.id, messageText.trim()).catch(console.error);
-
-    // Build message history for context
+    // Build message history for context (agent service saves messages to DB)
     const messageHistory = messages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -216,24 +219,18 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
         }
       }
 
-      // Save assistant message to DB
-      if (assistantContent || assistantImages.length > 0) {
-        saveAssistantMessage(
-          campaign.id,
-          assistantContent,
-          assistantImages.length > 0 ? assistantImages : undefined
-        ).catch(console.error);
-      }
+      // Assistant message is saved by the agent service directly to DB
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setError(err instanceof Error ? err.message : "Something went wrong");
       }
     } finally {
+      isStreamingRef.current = false;
       setIsStreaming(false);
       setThinkingText(null);
       abortRef.current = null;
     }
-  }, [campaign.id, messages, isStreaming]);
+  }, [campaign.id, messages]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -267,7 +264,6 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
     }
   }
 
-  const hasMessages = messages.length > 0;
   const hasAssistantResponse = messages.some((m) => m.role === "assistant" && m.content);
 
   return (
@@ -346,7 +342,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={
-                hasMessages
+                messages.length > 0
                   ? "Continue the conversation..."
                   : "Describe your content idea..."
               }

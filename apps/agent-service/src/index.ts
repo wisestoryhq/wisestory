@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { streamSSE } from "hono/streaming";
 import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
-import { createCreativeDirectorAgent, createBriefingAgent, createImageGenerationAgent } from "./agent.js";
+import { createCreativeDirectorAgent, createBriefingAgent, createImageGenerationAgent, createCaptionAgent } from "./agent.js";
 import { prisma } from "./db.js";
 import type { MediaType } from "@wisestory/prompts";
 
@@ -480,10 +480,17 @@ app.post("/chat/stream", async (c) => {
 
       parts.push({ text: message });
 
+      // Save user message to DB (agent service is source of truth for persistence)
+      await prisma.campaignMessage.create({
+        data: { campaignId, role: "user", content: message },
+      });
+
       // Track state for streaming
       let textBuffer = "";
+      let fullText = "";  // Full accumulated text for DB persistence
       let totalPartialChars = 0;
       let briefingStartedEmitted = false;
+      const collectedImages: Array<{ data: string; mimeType: string }> = [];
 
       const eventGenerator = runner.runAsync({
         userId: "user",
@@ -532,9 +539,10 @@ app.post("/chat/stream", async (c) => {
                   data: JSON.stringify({ content: part.text, partial: true }),
                 });
                 textBuffer += part.text;
+                fullText += part.text;
                 totalPartialChars += part.text.length;
               } else if (totalPartialChars > 0) {
-                // Skip consolidated event
+                // Skip consolidated event (already accumulated via partials)
                 console.log(`  [skip-consolidated] ${part.text.length} chars`);
               } else {
                 await stream.writeSSE({
@@ -542,16 +550,19 @@ app.post("/chat/stream", async (c) => {
                   data: JSON.stringify({ content: part.text, partial: false }),
                 });
                 textBuffer += part.text;
+                fullText += part.text;
               }
             }
 
             if ("inlineData" in part && part.inlineData) {
+              const imgData = {
+                data: part.inlineData.data ?? "",
+                mimeType: part.inlineData.mimeType ?? "image/png",
+              };
+              collectedImages.push(imgData);
               await stream.writeSSE({
                 event: "image",
-                data: JSON.stringify({
-                  data: part.inlineData.data ?? "",
-                  mimeType: part.inlineData.mimeType ?? "image/png",
-                }),
+                data: JSON.stringify(imgData),
               });
             }
           }
@@ -563,10 +574,18 @@ app.post("/chat/stream", async (c) => {
         }
       }
 
-      // Save assistant message to DB
-      const images: Array<{ data: string; mimeType: string }> = [];
-      // Note: images are extracted during streaming above, but for DB persistence
-      // we save the text content. Images are saved separately in the message.
+      // Save assistant message to DB (text + images)
+      if (fullText || collectedImages.length > 0) {
+        await prisma.campaignMessage.create({
+          data: {
+            campaignId,
+            role: "assistant",
+            content: fullText,
+            images: collectedImages.length > 0 ? collectedImages : undefined,
+          },
+        });
+        console.log(`[chat/stream] Saved assistant message: ${fullText.length} chars, ${collectedImages.length} images`);
+      }
 
       await stream.writeSSE({ event: "done", data: "{}" });
     } catch (err) {
@@ -582,25 +601,46 @@ app.post("/chat/stream", async (c) => {
 /**
  * POST /generate/image
  * Non-streaming endpoint that generates a single production image.
+ * Uses a researcher→image_generator pipeline so the image is grounded in brand knowledge.
  * Returns JSON with the image data.
  */
 app.post("/generate/image", async (c) => {
   const body = await c.req.json<{
     workspaceId: string;
+    campaignId: string;
     briefingSummary: string;
     imageDescription: string;
     mediaType: MediaType;
     imageIndex: number;
   }>();
 
-  const { workspaceId, briefingSummary, imageDescription, mediaType } = body;
+  const { workspaceId, campaignId, briefingSummary, imageDescription, mediaType } = body;
 
   if (!workspaceId || !briefingSummary || !imageDescription || !mediaType) {
     return c.json({ error: "Missing required fields" }, 400);
   }
 
   try {
-    // Fetch brand logos for visual context
+    // Load concept images from the briefing chat (directly from DB — avoids payload limits)
+    const briefingMessages = await prisma.campaignMessage.findMany({
+      where: { campaignId, role: "assistant" },
+      select: { images: true },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const briefingImages: Array<{ data: string; mimeType: string }> = [];
+    for (const msg of briefingMessages) {
+      if (Array.isArray(msg.images)) {
+        for (const img of msg.images as Array<{ data: string; mimeType: string }>) {
+          if (img.data && img.mimeType) {
+            briefingImages.push(img);
+          }
+        }
+      }
+    }
+    console.log(`[generate/image] Found ${briefingImages.length} concept images from ${briefingMessages.length} assistant messages`);
+
+    // Fetch brand logos
     const logos = await prisma.sourceFile.findMany({
       where: {
         workspaceId,
@@ -630,15 +670,28 @@ app.post("/generate/image", async (c) => {
       userId: "user",
     });
 
-    // Build parts with logos if available
+    // Build message parts — concept images first (primary direction), then logos
     const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+
+    // 1. Briefing concept images from the chat — primary visual reference
+    if (briefingImages.length > 0) {
+      parts.push({ text: `[CREATIVE REFERENCES — ${briefingImages.length} concept images from the briefing session. These represent the approved visual direction. Your final image MUST match this style, mood, color palette, and composition — but production-polished.]` });
+      for (const img of briefingImages) {
+        parts.push({ inlineData: { mimeType: img.mimeType, data: img.data } });
+      }
+    }
+
+    // 2. Brand logos — style reference only
     if (logos.length > 0) {
-      parts.push({ text: `[BRAND LOGOS: ${logos.length} attached. Reproduce the exact logo in your image.]` });
+      parts.push({ text: `[BRAND LOGO — for color/style reference only. NOT the main subject.]` });
       for (const logo of logos) {
         parts.push({ inlineData: { mimeType: logo.mimeType, data: logo.imageData! } });
       }
     }
-    parts.push({ text: `Generate the image as described. No text explanation needed.` });
+
+    parts.push({ text: `Generate the production image now. ${briefingImages.length > 0 ? "Match the visual direction from the concept images above." : "Follow the briefing description closely."} The image must be scroll-stopping content for ${mediaType}.` });
+
+    console.log(`[generate/image] Running agent with ${parts.length} message parts`);
 
     const eventGenerator = runner.runAsync({
       userId: "user",
@@ -649,9 +702,12 @@ app.post("/generate/image", async (c) => {
     let resultImage: { data: string; mimeType: string } | null = null;
 
     for await (const event of eventGenerator) {
+      console.log(`[generate/image] Event: author=${event.author} partial=${event.partial} parts=${event.content?.parts?.length ?? 0}`);
+
       if (event.author === "image_generator" && event.content?.parts) {
         for (const part of event.content.parts) {
           if ("inlineData" in part && part.inlineData) {
+            console.log(`[generate/image] Got image: ${part.inlineData.mimeType} (${part.inlineData.data?.length ?? 0} bytes)`);
             resultImage = {
               data: part.inlineData.data ?? "",
               mimeType: part.inlineData.mimeType ?? "image/png",
@@ -662,6 +718,7 @@ app.post("/generate/image", async (c) => {
     }
 
     if (!resultImage) {
+      console.error("[generate/image] No inlineData found in any event");
       return c.json({ error: "No image generated" }, 500);
     }
 
@@ -670,6 +727,78 @@ app.post("/generate/image", async (c) => {
     console.error("[generate/image] Error:", err);
     return c.json(
       { error: err instanceof Error ? err.message : "Image generation failed" },
+      500
+    );
+  }
+});
+
+/**
+ * POST /generate/caption
+ * Non-streaming endpoint that generates post caption + hashtags.
+ * Returns JSON with the caption text.
+ */
+app.post("/generate/caption", async (c) => {
+  const body = await c.req.json<{
+    workspaceId: string;
+    briefingSummary: string;
+    mediaType: MediaType;
+  }>();
+
+  const { workspaceId, briefingSummary, mediaType } = body;
+
+  if (!workspaceId || !briefingSummary || !mediaType) {
+    return c.json({ error: "Missing required fields" }, 400);
+  }
+
+  try {
+    const agent = createCaptionAgent({
+      workspaceId,
+      mediaType,
+      briefingSummary,
+    });
+
+    const sessionService = new InMemorySessionService();
+    const runner = new Runner({
+      appName: "wisestory",
+      agent,
+      sessionService,
+    });
+
+    const session = await sessionService.createSession({
+      appName: "wisestory",
+      userId: "user",
+    });
+
+    const eventGenerator = runner.runAsync({
+      userId: "user",
+      sessionId: session.id,
+      newMessage: {
+        role: "user",
+        parts: [{ text: `Write the caption and hashtags for this ${mediaType} campaign. Follow the briefing closely.` }],
+      },
+    });
+
+    let captionText = "";
+
+    for await (const event of eventGenerator) {
+      if (event.content?.parts) {
+        for (const part of event.content.parts) {
+          if ("text" in part && part.text) {
+            captionText += part.text;
+          }
+        }
+      }
+    }
+
+    if (!captionText.trim()) {
+      return c.json({ error: "No caption generated" }, 500);
+    }
+
+    return c.json({ caption: captionText.trim() });
+  } catch (err) {
+    console.error("[generate/caption] Error:", err);
+    return c.json(
+      { error: err instanceof Error ? err.message : "Caption generation failed" },
       500
     );
   }
