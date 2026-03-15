@@ -10,26 +10,27 @@ export async function GET(request: NextRequest) {
   });
 
   if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const base = process.env.BETTER_AUTH_URL || request.url;
+    return NextResponse.redirect(new URL("/login", base));
   }
 
   const code = request.nextUrl.searchParams.get("code");
   const stateParam = request.nextUrl.searchParams.get("state");
 
   if (!code || !stateParam) {
-    return NextResponse.redirect(new URL("/w", request.url));
+    return NextResponse.redirect(new URL("/w", process.env.BETTER_AUTH_URL || request.url));
   }
 
   let state: { workspaceSlug: string; userId: string };
   try {
     state = JSON.parse(stateParam);
   } catch {
-    return NextResponse.redirect(new URL("/w", request.url));
+    return NextResponse.redirect(new URL("/w", process.env.BETTER_AUTH_URL || request.url));
   }
 
   // Verify user matches
   if (state.userId !== session.user.id) {
-    return NextResponse.redirect(new URL("/w", request.url));
+    return NextResponse.redirect(new URL("/w", process.env.BETTER_AUTH_URL || request.url));
   }
 
   // Verify workspace membership
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!workspace || workspace.members.length === 0) {
-    return NextResponse.redirect(new URL("/w", request.url));
+    return NextResponse.redirect(new URL("/w", process.env.BETTER_AUTH_URL || request.url));
   }
 
   // Exchange code for tokens
@@ -80,7 +81,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const baseUrl = process.env.BETTER_AUTH_URL || request.url;
   return NextResponse.redirect(
-    new URL(`/w/${state.workspaceSlug}/sources`, request.url),
+    new URL(`/w/${state.workspaceSlug}/sources`, baseUrl),
   );
 }
