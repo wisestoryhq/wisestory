@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { headers } from "next/headers";
+import { agentFetch } from "@/lib/agent-client";
 
 /**
  * POST /api/campaigns/[campaignId]/chat
@@ -49,11 +50,8 @@ export async function POST(
     return new Response("Missing message", { status: 400 });
   }
 
-  const agentUrl = process.env.AGENT_SERVICE_URL ?? "http://localhost:3001";
-
-  const agentResponse = await fetch(`${agentUrl}/chat/stream`, {
+  const agentResponse = await agentFetch("/chat/stream", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       campaignId,
       workspaceId: campaign.workspace.id,
