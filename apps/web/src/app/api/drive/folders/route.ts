@@ -117,6 +117,38 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const previousFolderIds = new Set(connection.folderIds);
+  const newFolderIds = new Set(folderIds);
+  const removedFolders = [...previousFolderIds].filter((id) => !newFolderIds.has(id));
+
+  // If folders were removed, delete all indexed files + chunks and re-index
+  if (removedFolders.length > 0) {
+    // Delete knowledge chunks for files in this connection
+    await prisma.knowledgeChunk.deleteMany({
+      where: {
+        sourceFile: { sourceConnectionId: connection.id },
+      },
+    });
+
+    // Delete source files for this connection
+    await prisma.sourceFile.deleteMany({
+      where: { sourceConnectionId: connection.id },
+    });
+  }
+
+  // If no folders left, keep connected but clear folders
+  if (folderIds.length === 0) {
+    await prisma.sourceConnection.update({
+      where: { id: connection.id },
+      data: {
+        folderIds: [],
+        folderNames: [],
+        status: "connected",
+      },
+    });
+    return NextResponse.json({ ok: true });
+  }
+
   await prisma.sourceConnection.update({
     where: { id: connection.id },
     data: { folderIds, folderNames: folderNames ?? [] },

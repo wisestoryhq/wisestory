@@ -39,10 +39,15 @@ export default async function SourcesPage({
 
   const connection = workspace.sourceConnections[0] ?? null;
 
+  const campaignCount = await prisma.campaign.count({
+    where: { workspaceId: workspace.id },
+  });
+
   return (
     <SourcesView
       workspaceSlug={workspace.slug}
       googleClientId={process.env.GOOGLE_CLIENT_ID!}
+      campaignCount={campaignCount}
       connection={
         connection
           ? {
