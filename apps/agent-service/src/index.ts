@@ -6,6 +6,7 @@ import { Runner, InMemorySessionService, StreamingMode } from "@google/adk";
 import { createBriefingChatAgent, createBriefingDocumentAgent } from "./agent.js";
 import { retrieveKnowledge } from "./tools/retrieve-knowledge.js";
 import { extractBriefingDecisions } from "./tools/extract-decisions.js";
+import { buildGraphNarrative } from "./tools/traverse-graph.js";
 import { prisma } from "./db.js";
 import type { MediaType } from "@wisestory/prompts";
 
@@ -254,11 +255,12 @@ app.post("/briefing/generate", async (c) => {
         data: JSON.stringify({ text: "Building briefing document..." }),
       });
 
-      // Load knowledge graph nodes
+      // Load knowledge graph nodes with full edge data for traversal
       const nodes = await prisma.briefingNode.findMany({
         where: { campaignId },
         include: {
-          outgoingEdges: { include: { target: { select: { title: true } } } },
+          outgoingEdges: { include: { target: { select: { id: true, title: true } } } },
+          incomingEdges: { include: { source: { select: { id: true, title: true } } } },
         },
         orderBy: { createdAt: "asc" },
       });
@@ -276,43 +278,8 @@ app.post("/briefing/generate", async (c) => {
         }
       }
 
-      // Build structured summary from graph
-      let graphSummary = "";
-
-      if (nodes.length > 0) {
-        const grouped: Record<string, typeof nodes> = {};
-        for (const node of nodes) {
-          const key = node.nodeType;
-          if (!grouped[key]) grouped[key] = [];
-          grouped[key].push(node);
-        }
-
-        const sectionLabels: Record<string, string> = {
-          decision: "Decisions Made",
-          concept: "Creative Concepts",
-          visual_direction: "Visual Direction",
-          copy_direction: "Copy Direction",
-          liked_image: "Approved Images",
-          brand_element: "Brand Elements",
-          rejected_option: "Rejected Options",
-        };
-
-        for (const [nodeType, sectionNodes] of Object.entries(grouped)) {
-          if (nodeType === "rejected_option") continue; // Skip rejected in summary
-          const label = sectionLabels[nodeType] ?? nodeType;
-          graphSummary += `\n### ${label}\n`;
-          for (const node of sectionNodes) {
-            // Skip auto-extracted liked_image nodes that the user explicitly rejected
-            if (nodeType === "liked_image" && node.imageData && rejectedImageData.has(node.imageData)) {
-              continue;
-            }
-            graphSummary += `- **${node.title}**: ${node.content}\n`;
-            for (const edge of node.outgoingEdges) {
-              graphSummary += `  → ${edge.relationshipType} "${edge.target.title}"\n`;
-            }
-          }
-        }
-      }
+      // Build narrative summary by traversing the knowledge graph
+      let graphSummary = buildGraphNarrative(nodes, rejectedImageData);
 
       // Fallback: if graph is empty, use conversation messages
       if (!graphSummary.trim()) {
