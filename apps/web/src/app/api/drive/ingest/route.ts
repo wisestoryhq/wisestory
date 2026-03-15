@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { google } from "googleapis";
 import { createOAuth2Client } from "@/lib/google-drive";
 import { chunkText } from "@/lib/chunker";
-import { generateEmbeddings } from "@/lib/embeddings";
+import { generateEmbeddings, extractTextFromPdf } from "@/lib/embeddings";
 import { isLikelyLogo } from "@/lib/logo-detection";
 import type { SourceFileContentType } from "@wisestory/db";
 
@@ -233,9 +233,25 @@ async function processFiles(
             ? downloadRes.data
             : JSON.stringify(downloadRes.data);
       } else if (file.mimeType === "application/pdf") {
-        // PDFs — export text via Drive (limited but works for simple PDFs)
-        // For MVP, store as a file reference without text extraction
-        text = `[PDF document: ${file.name}]`;
+        // PDFs — download and extract text via Gemini (max 6 pages)
+        try {
+          const pdfRes = await drive.files.get(
+            { fileId: file.id!, alt: "media" },
+            { responseType: "arraybuffer" },
+          );
+          const pdfBuffer = Buffer.from(pdfRes.data as ArrayBuffer);
+          // Skip large PDFs (>6 pages ≈ >500KB heuristic, or check actual pages)
+          if (pdfBuffer.length > 2_000_000) {
+            console.log(`[ingest] Skipping large PDF (${(pdfBuffer.length / 1024 / 1024).toFixed(1)}MB): ${file.name}`);
+            text = `[PDF too large to index: ${file.name}]`;
+          } else {
+            text = await extractTextFromPdf(pdfBuffer);
+            console.log(`[ingest] Extracted ${text.length} chars from PDF: ${file.name}`);
+          }
+        } catch (pdfErr) {
+          console.error(`[ingest] PDF extraction failed for ${file.name}:`, pdfErr);
+          text = `[PDF document: ${file.name}]`;
+        }
       } else if (file.mimeType?.startsWith("image/")) {
         // Images — store reference
         text = `[Image: ${file.name}]`;

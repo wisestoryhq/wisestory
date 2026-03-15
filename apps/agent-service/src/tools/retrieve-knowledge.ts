@@ -6,7 +6,7 @@ import { prisma } from "../db.js";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 async function embedQuery(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2-preview" });
   const result = await model.batchEmbedContents({
     requests: [{ content: { role: "user", parts: [{ text }] } }],
   });
