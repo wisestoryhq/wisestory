@@ -172,9 +172,7 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
             <ArrowLeft className="h-4 w-4" />
           </Link>
           <div className="flex-1 min-w-0">
-            <h1 className="text-sm font-medium">
-              {isDone ? "Briefing Complete" : "Generating Briefing..."}
-            </h1>
+            <h1 className="text-sm font-medium">Creative Briefing</h1>
           </div>
         </div>
       </div>
@@ -186,23 +184,10 @@ function BriefingDocStream({ campaignId, workspaceSlug }: { campaignId: string; 
             <h1 className="text-2xl font-bold tracking-tight">
               Creative Briefing
             </h1>
-            {!isDone && !error && (
-              <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Generating...</span>
-              </div>
-            )}
           </div>
 
           {/* Streaming content */}
           <div className="px-8 py-6">
-            {thinkingText && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{thinkingText}</span>
-              </div>
-            )}
-
             <div className="briefing-prose">
               {parts.map((part, index) => {
                 if (part.type === "text") {

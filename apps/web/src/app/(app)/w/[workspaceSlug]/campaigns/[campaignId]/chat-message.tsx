@@ -118,7 +118,8 @@ export function ChatMessage({ message, imageRatings, onRateImage, isStreaming }:
               const src = `data:${part.mimeType};base64,${part.data}`;
               const ratingKey = `${message.id}:${i}`;
               const rating = imageRatings?.get(ratingKey);
-              const showRatingButtons = !isUser && !isStreaming && onRateImage;
+              const showRatingButtons = !isUser && onRateImage;
+              const ratingsDisabled = isStreaming;
               return (
                 <div key={i} className="space-y-1.5">
                   <div className="flex justify-center">
@@ -134,7 +135,7 @@ export function ChatMessage({ message, imageRatings, onRateImage, isStreaming }:
                       <img
                         src={src}
                         alt={`Generated concept ${i + 1}`}
-                        className="w-full object-cover"
+                        className="max-h-[600px] w-full object-cover"
                       />
                     </button>
                   </div>
@@ -142,8 +143,9 @@ export function ChatMessage({ message, imageRatings, onRateImage, isStreaming }:
                     <div className="flex justify-center gap-1">
                       <button
                         onClick={() => onRateImage(message.id, i, "like")}
+                        disabled={ratingsDisabled}
                         className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-40 disabled:pointer-events-none",
                           rating === "liked"
                             ? "bg-green-100 text-green-600 dark:bg-green-950/40 dark:text-green-400"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -153,8 +155,9 @@ export function ChatMessage({ message, imageRatings, onRateImage, isStreaming }:
                       </button>
                       <button
                         onClick={() => onRateImage(message.id, i, "dislike")}
+                        disabled={ratingsDisabled}
                         className={cn(
-                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors",
+                          "flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:opacity-40 disabled:pointer-events-none",
                           rating === "disliked"
                             ? "bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400"
                             : "text-muted-foreground hover:bg-muted hover:text-foreground"

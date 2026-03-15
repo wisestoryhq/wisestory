@@ -91,13 +91,14 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
 
   useEffect(() => {
     if (initialMessages.length === 0 && campaign.prompt) {
-      sendMessage(campaign.prompt);
+      // Delay so strict mode cleanup cancels before it fires — prevents double send
+      const timeout = setTimeout(() => sendMessage(campaign.prompt), 50);
+      return () => {
+        clearTimeout(timeout);
+        abortRef.current?.abort();
+        isStreamingRef.current = false;
+      };
     }
-    return () => {
-      // Abort in-flight request on cleanup (strict mode re-mount)
-      abortRef.current?.abort();
-      isStreamingRef.current = false;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -300,7 +301,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
   );
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center gap-4 border-b px-6 py-3">
         <Link
@@ -354,8 +355,8 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
       </div>
 
       {/* Input + Actions */}
-      <div className="border-t px-6 py-4">
-        <div className="mx-auto max-w-2xl space-y-2">
+      <div className="border-t px-6 py-1.5">
+        <div className="mx-auto max-w-2xl space-y-1">
           <form onSubmit={handleSubmit}>
             <div className="relative">
               <input
@@ -371,7 +372,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                 }
                 disabled={isStreaming}
                 className={cn(
-                  "w-full rounded-xl border bg-background px-4 py-3 pr-12 text-sm",
+                  "w-full rounded-xl border bg-background px-4 py-2 pr-12 text-sm",
                   "placeholder:text-muted-foreground/60",
                   "focus:outline-none focus:ring-2 focus:ring-[#f6b900]/30 focus:border-[#f6b900]/40",
                   "disabled:opacity-50",
@@ -399,10 +400,10 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
             </div>
           </form>
           {hasAssistantResponse && !isStreaming && (
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex items-center justify-end gap-1.5 py-0.5">
               <button
                 onClick={() => setShowGraph(true)}
-                className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <Network className="h-3.5 w-3.5" />
                 View Graph
@@ -414,7 +415,7 @@ export function BriefingChat({ workspaceSlug, campaign, initialMessages }: Props
                       size="sm"
                       onClick={handleGenerateBriefing}
                       disabled={isApproving || needsRating}
-                      className="gap-1.5 bg-[#f6b900] text-white hover:bg-[#e0a800]"
+                      className="gap-1.5"
                     >
                       Generate Briefing
                       {isApproving ? (
