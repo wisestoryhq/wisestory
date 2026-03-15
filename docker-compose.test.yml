@@ -1,0 +1,12 @@
+services:
+  db-test:
+    image: pgvector/pgvector:pg16
+    container_name: wisestory-db-test
+    environment:
+      POSTGRES_USER: wisestory_test
+      POSTGRES_PASSWORD: wisestory_test
+      POSTGRES_DB: wisestory_test
+    ports:
+      - "5435:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
