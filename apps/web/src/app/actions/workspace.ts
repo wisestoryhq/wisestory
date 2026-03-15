@@ -51,6 +51,40 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
   redirect(`/w/${workspace.slug}`);
 }
 
+export async function updateWorkspace(
+  workspaceSlug: string,
+  data: {
+    name: string;
+    category: string;
+    description: string;
+  }
+) {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session) redirect("/login");
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { slug: workspaceSlug },
+    include: {
+      members: { where: { userId: session.user.id } },
+    },
+  });
+
+  if (!workspace || workspace.members.length === 0) {
+    throw new Error("Workspace not found");
+  }
+
+  await prisma.workspace.update({
+    where: { id: workspace.id },
+    data: {
+      name: data.name.trim(),
+      category: data.category as never,
+      description: data.description.trim() || null,
+    },
+  });
+}
+
 export async function getUserWorkspaces() {
   const session = await auth.api.getSession({
     headers: await headers(),
