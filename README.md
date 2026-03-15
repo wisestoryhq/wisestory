@@ -35,10 +35,6 @@ WiseStory was built for the [**Gemini Live Agent Challenge**](https://geminilive
 
 WiseStory competes in the **Creative Storyteller** category, which calls for multimodal storytelling with interleaved output, where an agent combines text, visuals, narration, and mixed-media content in one cohesive flow.
 
-### Demo Video
-
-[![WiseStory Demo](https://img.youtube.com/vi/nG0DREwPXu0/hqdefault.jpg)](https://youtu.be/nG0DREwPXu0)
-
 ---
 
 ## What is WiseStory?
@@ -56,7 +52,7 @@ Connect your Google Drive, and WiseStory ingests your brand materials (guideline
 
 **What makes it different:**
 
-- **Interleaved multimodal output** — text, generated images, storyboards, voiceover scripts, and captions are produced together in one creative package, not assembled separately
+- **Interleaved multimodal output** — text, generated images, storyboards, and captions are produced together in one creative package, not assembled separately
 - **Grounded in your brand** — every output references the exact source materials that influenced it
 - **Workspace-level RAG** — brand knowledge is shared across all projects, not duplicated per campaign
 - **Media-type aware** — each format gets its own structure, pacing, and visual treatment
@@ -72,6 +68,94 @@ Connect your Google Drive, and WiseStory ingests your brand materials (guideline
 ---
 
 ## Architecture
+
+### System Overview
+
+```mermaid
+graph LR
+    User((User)) --> Web[Web App\nNext.js 16]
+    Web -->|HTTP + SSE| Agent[Agent Service\nGoogle ADK]
+    Agent --> Gemini[Gemini 2.5\nFlash Image]
+    Agent --> Embed[Gemini Embedding 2\nPreview]
+    Web --> Embed
+    Web --> Drive[Google Drive API]
+    Web --> DB[(Cloud SQL\nPostgreSQL + pgvector)]
+    Agent --> DB
+```
+
+### Content Generation Flow
+
+This sequence shows what happens when a user generates content (e.g., an Instagram Carousel):
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Web as Next.js Web App<br/>(Cloud Run)
+    participant Agent as Agent Service<br/>(Cloud Run + ADK)
+    participant Gemini as Gemini 2.5 Flash Image
+    participant Embed as Gemini Embedding 2<br/>Preview
+    participant DB as Cloud SQL<br/>(PostgreSQL + pgvector)
+
+    User->>Web: Select media type + enter prompt
+    Web->>Agent: POST /chat (prompt, campaignId, mediaType)
+
+    Note over Agent: ADK Runner creates session
+
+    Agent->>Embed: Embed user query (768-dim vector)
+    Embed-->>Agent: Query embedding
+
+    Agent->>DB: Vector similarity search<br/>(workspace-scoped, pgvector)
+    DB-->>Agent: Relevant knowledge chunks<br/>+ source references
+
+    Note over Agent: Assemble grounded prompt:<br/>brand context + media type template<br/>+ user prompt + retrieved chunks
+
+    Agent->>Gemini: Generate with interleaved output
+
+    loop SSE Stream
+        Gemini-->>Agent: Text chunk / Generated image / Storyboard beat
+        Agent-->>Web: SSE event (text | image | metadata)
+        Web-->>User: Render creative package in real-time
+    end
+
+    Agent->>DB: Save campaign output + source refs
+
+    Note over User: Sees complete creative package:<br/>caption, storyboard, images,<br/>source references
+```
+
+### Knowledge Ingestion Flow
+
+This sequence shows how Google Drive assets become searchable brand knowledge:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Web as Next.js Web App<br/>(Cloud Run)
+    participant Drive as Google Drive API
+    participant Embed as Gemini Embedding 2<br/>Preview
+    participant DB as Cloud SQL<br/>(PostgreSQL + pgvector)
+
+    User->>Web: Connect Google Drive folder
+    Web->>Drive: OAuth 2.0 consent flow
+    Drive-->>Web: Access token + refresh token
+    Web->>DB: Store source connection
+
+    User->>Web: Start ingestion
+    Web->>Drive: List files in folder (docs, images, PDFs)
+    Drive-->>Web: File metadata + content
+
+    loop For each file
+        Web->>Web: Chunk content into segments
+
+        Web->>Embed: Generate multimodal embeddings<br/>(text, images, and PDFs natively)
+        Embed-->>Web: 768-dim vectors
+
+        Web->>DB: Store chunks + embeddings<br/>(workspace-scoped, pgvector)
+    end
+
+    Web-->>User: Indexing complete,<br/>knowledge ready for generation
+```
+
+### Component Details
 
 | Component | Tech | Description |
 |---|---|---|
